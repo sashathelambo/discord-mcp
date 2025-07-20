@@ -19,9 +19,9 @@
 
 ## 📖 Description
 
-A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), providing **76 powerful tools** for complete Discord server management and automation through MCP-compatible applications like Claude Desktop.
+A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), providing **82 powerful tools** for complete Discord server management and automation through MCP-compatible applications like Claude Desktop.
 
-**🚀 NEW MAJOR UPDATE:** We've expanded from 47 to **76 total tools**, adding 29 powerful new capabilities across 6 major categories including voice management, advanced moderation, analytics, and interactive components!
+**🚀 NEW MAJOR UPDATE:** We've expanded from 76 to **82 total tools**, adding 6 new powerful channel organization capabilities for complete server structure management!
 
 Transform your AI assistants into Discord powerhouses with comprehensive server management, voice channel control, advanced moderation, detailed analytics, and rich interactive components.
 
@@ -33,6 +33,7 @@ Transform your AI assistants into Discord powerhouses with comprehensive server 
 - **🛡️ Advanced Moderation** - Comprehensive automod rules and member management
 - **📊 Analytics & Logging** - Detailed server statistics and chat log exports
 - **🎯 Interactive Components** - Buttons, select menus, embeds, and modals
+- **🏗️ Channel Organization** - Complete channel and category positioning and management
 - **⚙️ Server Administration** - Complete server settings and welcome screen management
 - **🔗 Dual Transport** - Both stdio and HTTP JSON-RPC support
 
@@ -145,7 +146,7 @@ Install Discord MCP Server automatically via [Smithery](https://smithery.ai/):
 npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 ```
 
-## 🛠️ Available Tools (76 Total)
+## 🛠️ Available Tools (82 Total)
 
 > **Note:** If `DISCORD_GUILD_ID` is set in your environment, the `guildId` parameter becomes optional for all tools that accept it.
 
@@ -201,7 +202,7 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 - **`get_roles`** - List all server roles
 - **`set_role_positions`** - Set role hierarchy positions
 
-### 📢 Channel Management (8 tools)
+### 📢 Channel Management (14 tools)
 - **`create_text_channel`** - Create a text channel
 - **`delete_channel`** - Delete a channel
 - **`find_channel`** - Find a channel by name
@@ -210,6 +211,12 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 - **`delete_category`** - Delete a category
 - **`find_category`** - Find a category by name
 - **`list_channels_in_category`** - List channels in a category
+- **`set_channel_position`** - Move a single channel to a specific position
+- **`set_channel_positions`** - Move multiple channels to specific positions
+- **`move_channel_to_category`** - Move channels into or out of categories
+- **`set_category_position`** - Move a category to a specific position
+- **`organize_channels`** - Comprehensive server reorganization in one command
+- **`get_channel_structure`** - View current server structure with visual layout
 
 ### 🎨 Emoji & Sticker Management (6 tools)
 - **`create_emoji`** - Create a custom emoji
@@ -276,6 +283,67 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 - **`get_server_stats`** - Get comprehensive server statistics
 - **`export_chat_log`** - Export chat logs in JSON/CSV/TXT formats
 
+## 🏗️ Channel Organization Features
+
+The Discord MCP server includes powerful channel organization capabilities for complete server structure management:
+
+### 🎯 Core Organization Tools
+
+- **Individual Channel Positioning** - Move single channels with `set_channel_position`
+- **Bulk Channel Management** - Reorder multiple channels simultaneously with `set_channel_positions`
+- **Category Management** - Position categories and organize channel hierarchy with `set_category_position`
+- **Channel-Category Assignment** - Move channels between categories with `move_channel_to_category`
+- **Comprehensive Organization** - Complete server restructuring with `organize_channels`
+- **Structure Visualization** - View current layout with `get_channel_structure`
+
+### 📋 Usage Examples
+
+**Get Current Server Structure:**
+```json
+{
+  "name": "get_channel_structure",
+  "arguments": { "guildId": "your-server-id" }
+}
+```
+
+**Move Channel to Category:**
+```json
+{
+  "name": "move_channel_to_category", 
+  "arguments": {
+    "channelId": "123456789",
+    "categoryId": "987654321"
+  }
+}
+```
+
+**Comprehensive Server Reorganization:**
+```json
+{
+  "name": "organize_channels",
+  "arguments": {
+    "organization": {
+      "categories": [
+        {"categoryId": "cat1", "position": 0},
+        {"categoryId": "cat2", "position": 1}
+      ],
+      "channels": [
+        {"channelId": "ch1", "categoryId": "cat1", "position": 0},
+        {"channelId": "ch2", "categoryId": "cat2", "position": 1},
+        {"channelId": "ch3", "categoryId": null, "position": 2}
+      ]
+    }
+  }
+}
+```
+
+### 🛡️ Organization Requirements
+- Bot requires **"Manage Channels"** permission
+- Works with text channels, voice channels, and categories
+- Supports both individual and bulk operations
+- Position-based ordering (0-based indexing)
+- Category assignment and removal capabilities
+
 ## 🚀 Development
 
 ### Available Scripts
@@ -326,6 +394,7 @@ discord-mcp/
 - **🎮 Community Management** - Automated moderation and member management
 - **📅 Event Coordination** - Streamlined event planning and management
 - **🎵 Music & Audio** - Voice channel management and audio playback
+- **🏗️ Server Organization** - Intelligent channel and category structure management
 - **📈 Growth Tracking** - Server statistics and member insights
 - **🔧 Server Administration** - Complete server configuration and management
 

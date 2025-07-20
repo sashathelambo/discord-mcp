@@ -661,13 +661,16 @@ async function main() {
       // Start HTTP server
       const port = parseInt(useHttp) || 3000;
       
+      // Map to store active transports by session ID
+      const activeTransports = new Map();
+      
       const httpServer = createServer(async (req, res) => {
         const url = new URL(req.url || '/', `http://${req.headers.host}`);
         
         // CORS headers
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         
         if (req.method === 'OPTIONS') {
           res.writeHead(200);
@@ -675,23 +678,79 @@ async function main() {
           return;
         }
         
-        if (url.pathname === '/sse' && req.method === 'GET') {
-          // SSE connection
-          const transport = new SSEServerTransport('/message', res);
-          await server.connect(transport);
-          await transport.start();
-        } else if (url.pathname === '/message' && req.method === 'POST') {
-          // Handle POST messages - this would need to route to the correct transport
-          res.writeHead(501);
-          res.end('POST message handling not implemented yet');
-        } else if (url.pathname === '/health' && req.method === 'GET') {
-          // Health check
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'ok', server: 'discord-mcp' }));
-        } else {
-          // Default response
-          res.writeHead(200, { 'Content-Type': 'text/plain' });
-          res.end('Discord MCP Server - Use /sse for SSE connection, /health for status');
+        try {
+          if (url.pathname === '/sse' && req.method === 'GET') {
+            // SSE connection for mcp-remote
+            const transport = new SSEServerTransport('/message', res);
+            
+            // Store transport by session ID
+            activeTransports.set(transport.sessionId, transport);
+            
+            // Connect server to transport
+            await server.connect(transport);
+            await transport.start();
+            
+            // Clean up when connection closes
+            transport.onclose = () => {
+              activeTransports.delete(transport.sessionId);
+            };
+            
+          } else if (url.pathname === '/message' && req.method === 'POST') {
+            // Handle POST messages from mcp-remote
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+              try {
+                // Get session ID from URL params or headers
+                const sessionId = url.searchParams.get('sessionId') || req.headers['x-session-id'];
+                const transport = activeTransports.get(sessionId);
+                
+                if (transport) {
+                  const message = JSON.parse(body);
+                  await transport.handleMessage(message);
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ success: true }));
+                } else {
+                  res.writeHead(404, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'Session not found' }));
+                }
+              } catch (error) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+              }
+            });
+            
+          } else if (url.pathname === '/health' && req.method === 'GET') {
+            // Health check
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              status: 'ok', 
+              server: 'discord-mcp',
+              activeConnections: activeTransports.size 
+            }));
+            
+          } else {
+            // Default response with mcp-remote instructions
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end(`Discord MCP Server
+
+MCP Remote Usage:
+npx -y mcp-remote ${req.headers.host}
+
+Endpoints:
+- GET /sse - SSE connection
+- POST /message - Message handling  
+- GET /health - Health check
+
+Active connections: ${activeTransports.size}`);
+          }
+        } catch (error) {
+          console.error('HTTP request error:', error);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Internal server error' }));
         }
       });
       

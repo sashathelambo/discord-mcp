@@ -1420,6 +1420,273 @@ Boosts:
     }
   }
 
+  async moveChannelToCategory(guildId: string | undefined, channelId: string, categoryId: string | null): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Guild not found");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel) {
+        throw new Error("Channel not found in this guild");
+      }
+
+      let category = null;
+      if (categoryId) {
+        category = guild.channels.cache.get(categoryId);
+        if (!category || category.type !== ChannelType.GuildCategory) {
+          throw new Error("Category not found or invalid category type");
+        }
+      }
+
+      const editableChannel = channel as any;
+      if (typeof editableChannel.setParent !== 'function') {
+        throw new Error("Channel type does not support category assignment");
+      }
+
+      await editableChannel.setParent(categoryId);
+      
+      const action = categoryId ? `moved to category "${category?.name}"` : "removed from category";
+      return `Successfully ${action} channel "${channel.name}"`;
+    } catch (error) {
+      throw new Error(`Failed to move channel to category: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async setCategoryPosition(guildId: string | undefined, categoryId: string, position: number): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Guild not found");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const category = guild.channels.cache.get(categoryId);
+      if (!category || category.type !== ChannelType.GuildCategory) {
+        throw new Error("Category not found or not a category channel");
+      }
+
+      await category.setPosition(position);
+      
+      return `Successfully moved category "${category.name}" to position ${position}`;
+    } catch (error) {
+      throw new Error(`Failed to set category position: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async organizeChannels(guildId: string | undefined, organization: {
+    categories?: Array<{categoryId: string, position: number}>,
+    channels?: Array<{channelId: string, position?: number, categoryId?: string | null}>
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Guild not found");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const results: string[] = [];
+
+      // First, organize categories
+      if (organization.categories && organization.categories.length > 0) {
+        const categoryChanges: Array<{channel: any, position: number}> = [];
+        
+        for (const { categoryId, position } of organization.categories) {
+          const category = guild.channels.cache.get(categoryId);
+          if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new Error(`Category with ID ${categoryId} not found or not a category`);
+          }
+          categoryChanges.push({ channel: category, position });
+        }
+
+        if (categoryChanges.length > 0) {
+          await guild.channels.setPositions(categoryChanges);
+          results.push(`Repositioned ${categoryChanges.length} categories`);
+        }
+      }
+
+      // Then, organize channels (move to categories and set positions)
+      if (organization.channels && organization.channels.length > 0) {
+        let movedToCategories = 0;
+        let repositioned = 0;
+
+        for (const { channelId, position, categoryId } of organization.channels) {
+          const channel = guild.channels.cache.get(channelId);
+          if (!channel) {
+            throw new Error(`Channel with ID ${channelId} not found`);
+          }
+
+          const editableChannel = channel as any;
+
+          // Move to category if specified
+          if (categoryId !== undefined) {
+            if (categoryId && !guild.channels.cache.get(categoryId)) {
+              throw new Error(`Category with ID ${categoryId} not found`);
+            }
+            
+            if (typeof editableChannel.setParent === 'function') {
+              await editableChannel.setParent(categoryId);
+              movedToCategories++;
+            }
+          }
+
+          // Set position if specified
+          if (position !== undefined) {
+            if (typeof editableChannel.setPosition === 'function') {
+              await editableChannel.setPosition(position);
+              repositioned++;
+            }
+          }
+        }
+
+        if (movedToCategories > 0) {
+          results.push(`Moved ${movedToCategories} channels to new categories`);
+        }
+        if (repositioned > 0) {
+          results.push(`Repositioned ${repositioned} channels`);
+        }
+      }
+
+      return `Successfully organized server: ${results.join(', ')}`;
+    } catch (error) {
+      throw new Error(`Failed to organize channels: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async getChannelStructure(guildId: string | undefined): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Guild not found");
+    }
+
+    try {
+      const channels = guild.channels.cache
+        .filter(channel => {
+          // Only include channels that have a position property
+          const channelWithPosition = channel as any;
+          return channelWithPosition.position !== undefined;
+        })
+        .sort((a, b) => {
+          const aPos = (a as any).position || 0;
+          const bPos = (b as any).position || 0;
+          return aPos - bPos;
+        });
+
+      const structure: string[] = [];
+      const categories = new Map();
+      const orphanChannels: any[] = [];
+
+      // Group channels by category
+      channels.forEach(channel => {
+        if (channel.type === ChannelType.GuildCategory) {
+          categories.set(channel.id, {
+            category: channel,
+            channels: []
+          });
+        } else if (channel.parent) {
+          if (!categories.has(channel.parent.id)) {
+            categories.set(channel.parent.id, {
+              category: channel.parent,
+              channels: []
+            });
+          }
+          categories.get(channel.parent.id).channels.push(channel);
+        } else {
+          orphanChannels.push(channel);
+        }
+      });
+
+      // Build structure string
+      structure.push(`📋 **Channel Structure for ${guild.name}**\n`);
+
+      // Show orphan channels first (channels not in any category)
+      if (orphanChannels.length > 0) {
+        structure.push("🔸 **Uncategorized Channels:**");
+        orphanChannels.forEach(channel => {
+          const emoji = this.getChannelEmoji(channel.type);
+          const position = (channel as any).position || 0;
+          structure.push(`  ${emoji} ${channel.name} (ID: ${channel.id}, Position: ${position})`);
+        });
+        structure.push("");
+      }
+
+      // Show categories and their channels
+      const sortedCategories = Array.from(categories.values())
+        .sort((a, b) => {
+          const aPos = (a.category as any).position || 0;
+          const bPos = (b.category as any).position || 0;
+          return aPos - bPos;
+        });
+
+      sortedCategories.forEach(({ category, channels: categoryChannels }) => {
+        const categoryPosition = (category as any).position || 0;
+        structure.push(`📁 **${category.name}** (ID: ${category.id}, Position: ${categoryPosition})`);
+        
+        const sortedChannels = categoryChannels.sort((a: any, b: any) => {
+          const aPos = a.position || 0;
+          const bPos = b.position || 0;
+          return aPos - bPos;
+        });
+        sortedChannels.forEach((channel: any) => {
+          const emoji = this.getChannelEmoji(channel.type);
+          const position = channel.position || 0;
+          structure.push(`  ${emoji} ${channel.name} (ID: ${channel.id}, Position: ${position})`);
+        });
+        structure.push("");
+      });
+
+      return structure.join('\n');
+    } catch (error) {
+      throw new Error(`Failed to get channel structure: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private getChannelEmoji(channelType: ChannelType): string {
+    switch (channelType) {
+      case ChannelType.GuildText:
+        return "💬";
+      case ChannelType.GuildVoice:
+        return "🔊";
+      case ChannelType.GuildAnnouncement:
+        return "📢";
+      case ChannelType.GuildStageVoice:
+        return "🎭";
+      case ChannelType.GuildForum:
+        return "💭";
+      default:
+        return "📄";
+    }
+  }
+
   // Permission Management Tools
   async setChannelPermissions(
     channelId: string, 

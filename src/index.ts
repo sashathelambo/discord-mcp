@@ -798,6 +798,124 @@ const getAllTools = () => [
           required: ['channelPositions'],
         },
       },
+      {
+        name: 'move_channel_to_category',
+        description: 'Move a channel to a category or remove it from a category',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+            channelId: {
+              type: 'string',
+              description: 'Channel ID',
+            },
+            categoryId: {
+              type: ['string', 'null'],
+              description: 'Category ID (null to remove from category)',
+            },
+          },
+          required: ['channelId', 'categoryId'],
+        },
+      },
+      {
+        name: 'set_category_position',
+        description: 'Move a category to a specific position',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+            categoryId: {
+              type: 'string',
+              description: 'Category ID',
+            },
+            position: {
+              type: 'number',
+              description: 'New position (0-based)',
+            },
+          },
+          required: ['categoryId', 'position'],
+        },
+      },
+      {
+        name: 'organize_channels',
+        description: 'Comprehensive channel and category organization tool',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+            organization: {
+              type: 'object',
+              properties: {
+                categories: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      categoryId: {
+                        type: 'string',
+                        description: 'Category ID',
+                      },
+                      position: {
+                        type: 'number',
+                        description: 'New position',
+                      },
+                    },
+                    required: ['categoryId', 'position'],
+                  },
+                  description: 'Array of category position updates',
+                },
+                channels: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      channelId: {
+                        type: 'string',
+                        description: 'Channel ID',
+                      },
+                      position: {
+                        type: 'number',
+                        description: 'New position (optional)',
+                      },
+                      categoryId: {
+                        type: ['string', 'null'],
+                        description: 'Category ID (null to remove from category, optional)',
+                      },
+                    },
+                    required: ['channelId'],
+                  },
+                  description: 'Array of channel updates',
+                },
+              },
+              description: 'Organization configuration',
+            },
+          },
+          required: ['organization'],
+        },
+      },
+      {
+        name: 'get_channel_structure',
+        description: 'Get the current channel and category structure of the server',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+          },
+          required: [],
+        },
+      },
 
       // Additional Message Management Tools
       {
@@ -2037,6 +2155,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: result }] };
       }
 
+      case 'move_channel_to_category': {
+        const parsed = schemas.MoveChannelToCategorySchema.parse(args);
+        const result = await discordService.moveChannelToCategory(parsed.guildId, parsed.channelId, parsed.categoryId);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
+      case 'set_category_position': {
+        const parsed = schemas.SetCategoryPositionSchema.parse(args);
+        const result = await discordService.setCategoryPosition(parsed.guildId, parsed.categoryId, parsed.position);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
+      case 'organize_channels': {
+        const parsed = schemas.OrganizeChannelsSchema.parse(args);
+        const result = await discordService.organizeChannels(parsed.guildId, parsed.organization);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
+      case 'get_channel_structure': {
+        const parsed = schemas.GetChannelStructureSchema.parse(args);
+        const result = await discordService.getChannelStructure(parsed.guildId);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
       // Additional Message Management
       case 'pin_message': {
         const parsed = schemas.PinMessageSchema.parse(args);
@@ -2580,6 +2722,30 @@ async function main() {
                       case 'set_channel_positions': {
                         const parsed = schemas.SetChannelPositionsSchema.parse(args);
                         result = await discordService.setChannelPositions(parsed.guildId, parsed.channelPositions);
+                        break;
+                      }
+
+                      case 'move_channel_to_category': {
+                        const parsed = schemas.MoveChannelToCategorySchema.parse(args);
+                        result = await discordService.moveChannelToCategory(parsed.guildId, parsed.channelId, parsed.categoryId);
+                        break;
+                      }
+
+                      case 'set_category_position': {
+                        const parsed = schemas.SetCategoryPositionSchema.parse(args);
+                        result = await discordService.setCategoryPosition(parsed.guildId, parsed.categoryId, parsed.position);
+                        break;
+                      }
+
+                      case 'organize_channels': {
+                        const parsed = schemas.OrganizeChannelsSchema.parse(args);
+                        result = await discordService.organizeChannels(parsed.guildId, parsed.organization);
+                        break;
+                      }
+
+                      case 'get_channel_structure': {
+                        const parsed = schemas.GetChannelStructureSchema.parse(args);
+                        result = await discordService.getChannelStructure(parsed.guildId);
                         break;
                       }
 

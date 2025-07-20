@@ -286,6 +286,37 @@ export const SetChannelPositionsSchema = z.object({
   })).describe("Array of channel position updates")
 });
 
+export const MoveChannelToCategorySchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID"),
+  channelId: z.string().describe("Channel ID"),
+  categoryId: z.string().nullable().describe("Category ID (null to remove from category)")
+});
+
+export const SetCategoryPositionSchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID"),
+  categoryId: z.string().describe("Category ID"),
+  position: z.number().describe("New position")
+});
+
+export const OrganizeChannelsSchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID"),
+  organization: z.object({
+    categories: z.array(z.object({
+      categoryId: z.string().describe("Category ID"),
+      position: z.number().describe("New position")
+    })).optional().describe("Array of category position updates"),
+    channels: z.array(z.object({
+      channelId: z.string().describe("Channel ID"),
+      position: z.number().optional().describe("New position (optional)"),
+      categoryId: z.string().nullable().optional().describe("Category ID (null to remove from category, optional)")
+    })).optional().describe("Array of channel updates")
+  }).describe("Organization configuration")
+});
+
+export const GetChannelStructureSchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID")
+});
+
 // Tool parameter schemas using Zod for validation
 export const ServerInfoSchema = z.object({
   guildId: z.string().optional().describe("Discord server ID")

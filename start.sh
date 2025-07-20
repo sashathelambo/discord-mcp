@@ -17,6 +17,11 @@ trap 'echo "Received shutdown signal, stopping Discord MCP server..." >&2; exit 
 # Ensure proper stdio buffering
 export NODE_OPTIONS="--max-old-space-size=512"
 
-# Start the Discord MCP server with proper stdio handling
-echo "Starting Discord MCP server..." >&2
+# Start the Discord MCP server
+if [ -n "$PORT" ]; then
+    echo "Starting Discord MCP server on HTTP port $PORT..." >&2
+else
+    echo "Starting Discord MCP server on stdio..." >&2
+fi
+
 exec node dist/index.js

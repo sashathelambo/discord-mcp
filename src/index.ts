@@ -2,12 +2,15 @@
 import 'dotenv/config';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { DiscordService } from './discord-service.js';
 import * as schemas from './types.js';
+import { createServer } from 'node:http';
+import { URL } from 'node:url';
 
 const server = new Server(
   {
@@ -651,10 +654,58 @@ async function main() {
     // Initialize Discord first
     await initializeDiscord();
 
-    // Start the MCP server
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('Discord MCP server running on stdio');
+    // Check if we should use HTTP transport
+    const useHttp = process.env.MCP_HTTP_PORT || process.env.PORT;
+    
+    if (useHttp) {
+      // Start HTTP server
+      const port = parseInt(useHttp) || 3000;
+      
+      const httpServer = createServer(async (req, res) => {
+        const url = new URL(req.url || '/', `http://${req.headers.host}`);
+        
+        // CORS headers
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        
+        if (req.method === 'OPTIONS') {
+          res.writeHead(200);
+          res.end();
+          return;
+        }
+        
+        if (url.pathname === '/sse' && req.method === 'GET') {
+          // SSE connection
+          const transport = new SSEServerTransport('/message', res);
+          await server.connect(transport);
+          await transport.start();
+        } else if (url.pathname === '/message' && req.method === 'POST') {
+          // Handle POST messages - this would need to route to the correct transport
+          res.writeHead(501);
+          res.end('POST message handling not implemented yet');
+        } else if (url.pathname === '/health' && req.method === 'GET') {
+          // Health check
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'ok', server: 'discord-mcp' }));
+        } else {
+          // Default response
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end('Discord MCP Server - Use /sse for SSE connection, /health for status');
+        }
+      });
+      
+      httpServer.listen(port, () => {
+        console.error(`Discord MCP server running on HTTP port ${port}`);
+        console.error(`SSE endpoint: http://localhost:${port}/sse`);
+        console.error(`Health check: http://localhost:${port}/health`);
+      });
+    } else {
+      // Start stdio server (default)
+      const transport = new StdioServerTransport();
+      await server.connect(transport);
+      console.error('Discord MCP server running on stdio');
+    }
   } catch (error) {
     console.error('Failed to start Discord MCP server:', error);
     process.exit(1);

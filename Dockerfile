@@ -30,6 +30,9 @@ RUN chmod +x start.sh
 ENV DISCORD_TOKEN=""
 ENV DISCORD_GUILD_ID=""
 ENV NODE_ENV=production
+ENV PORT=3000
+
+EXPOSE 3000
 
 # Use dumb-init to handle signals properly for stdio transport
 ENTRYPOINT ["dumb-init", "--"]

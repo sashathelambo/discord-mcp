@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  discord-mcp:
+    build: .
+    container_name: discord-mcp-server
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - NODE_ENV=production
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    networks:
+      - discord-mcp-network
+    # Ensure proper signal handling for stdio transport
+    init: true
+    # Add health check to monitor container status
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  discord-mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

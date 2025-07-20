@@ -120,6 +120,14 @@ export const GetMessageAttachmentsSchema = z.object({
   messageId: z.string().describe("Message ID")
 });
 
+export const ReadImagesSchema = z.object({
+  channelId: z.string().describe("Channel ID"),
+  messageId: z.string().optional().describe("Specific message ID (optional - if not provided, reads latest image)"),
+  limit: z.number().min(1).max(10).default(1).describe("Number of recent messages to search for images"),
+  includeMetadata: z.boolean().default(true).describe("Include image metadata (dimensions, file size, etc.)"),
+  downloadImages: z.boolean().default(false).describe("Download and analyze image content (slower but more detailed)")
+});
+
 // Advanced Interaction Schemas
 export const SendModalSchema = z.object({
   interactionId: z.string().describe("Interaction ID"),

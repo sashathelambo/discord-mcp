@@ -4025,6 +4025,125 @@ ${formattedRoles.join('\n\n')}`;
     }
   }
 
+  async readImages(
+    channelId: string, 
+    messageId?: string, 
+    limit: number = 1, 
+    includeMetadata: boolean = true, 
+    downloadImages: boolean = false
+  ): Promise<string> {
+    try {
+      const channel = this.client.channels.cache.get(channelId) as TextChannel;
+      if (!channel) {
+        throw new Error("Channel not found by channelId");
+      }
+      
+      let messages: any[] = [];
+      
+      if (messageId) {
+        // Read specific message
+        const message = await channel.messages.fetch(messageId);
+        if (!message) {
+          throw new Error("Message not found");
+        }
+        messages = [message];
+      } else {
+        // Read recent messages to find images
+        const recentMessages = await channel.messages.fetch({ limit: limit * 5 }); // Get more to find images
+        messages = Array.from(recentMessages.values());
+      }
+      
+      const imageMessages = messages.filter(msg => 
+        msg.attachments.some((att: any) => 
+          att.contentType && att.contentType.startsWith('image/')
+        )
+      ).slice(0, limit);
+      
+      if (imageMessages.length === 0) {
+        return messageId 
+          ? "No images found in the specified message"
+          : `No images found in the last ${limit * 5} messages`;
+      }
+      
+      const results = [];
+      
+      for (const message of imageMessages) {
+        const imageAttachments = message.attachments.filter((att: any) => 
+          att.contentType && att.contentType.startsWith('image/')
+        );
+        
+        for (const attachment of imageAttachments) {
+          const imageInfo: any = {
+            messageId: message.id,
+            filename: attachment.name,
+            url: attachment.url,
+            contentType: attachment.contentType,
+            author: message.author.username,
+            timestamp: message.createdAt.toISOString()
+          };
+          
+          if (includeMetadata) {
+            imageInfo.size = `${(attachment.size / 1024).toFixed(2)} KB`;
+            imageInfo.width = attachment.width || 'Unknown';
+            imageInfo.height = attachment.height || 'Unknown';
+            imageInfo.spoiler = attachment.spoiler;
+          }
+          
+          if (downloadImages) {
+            try {
+              // Add basic image analysis
+              const response = await fetch(attachment.url);
+              if (response.ok) {
+                const buffer = await response.arrayBuffer();
+                imageInfo.actualSize = buffer.byteLength;
+                imageInfo.downloaded = true;
+                imageInfo.analysis = "Image successfully downloaded and analyzed";
+              }
+            } catch (downloadError) {
+              imageInfo.downloadError = `Failed to download: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`;
+            }
+          }
+          
+          results.push(imageInfo);
+        }
+      }
+      
+      const formattedResults = results.map((img, index) => {
+        let result = `**Image ${index + 1}: ${img.filename}**
+- Message ID: ${img.messageId}
+- Author: ${img.author}
+- URL: ${img.url}
+- Type: ${img.contentType}
+- Timestamp: ${img.timestamp}`;
+
+        if (includeMetadata) {
+          result += `
+- Size: ${img.size}
+- Dimensions: ${img.width}x${img.height}
+- Spoiler: ${img.spoiler ? 'Yes' : 'No'}`;
+        }
+        
+        if (downloadImages) {
+          if (img.downloaded) {
+            result += `
+- Downloaded: ✅ (${img.actualSize} bytes)
+- Analysis: ${img.analysis}`;
+          } else if (img.downloadError) {
+            result += `
+- Download: ❌ ${img.downloadError}`;
+          }
+        }
+        
+        return result;
+      });
+      
+      return `**Found ${results.length} image(s):**\n\n${formattedResults.join('\n\n')}`;
+      
+    } catch (error) {
+      throw new Error(`Failed to read images: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   // Enhanced Automod Tools
   async createAutomodRule(
     guildId?: string, 

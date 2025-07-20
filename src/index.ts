@@ -46,7 +46,7 @@ const getAllTools = () => [
               enum: [
                 'get_server_info', 'send_message', 'edit_message', 'delete_message', 'read_messages',
                 'pin_message', 'unpin_message', 'get_pinned_messages', 'bulk_delete_messages',
-                'crosspost_message', 'get_message_history', 'get_message_attachments',
+                'crosspost_message', 'get_message_history', 'get_message_attachments', 'read_images',
                 'get_user_id_by_name', 'send_private_message', 'edit_private_message', 
                 'delete_private_message', 'read_private_messages', 'add_reaction', 'remove_reaction',
                 'create_text_channel', 'create_voice_channel', 'create_forum_channel', 
@@ -1698,6 +1698,39 @@ const getAllTools = () => [
         },
       },
 
+      {
+        name: 'read_images',
+        description: 'Read and analyze images from Discord messages with optional metadata and content analysis',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            channelId: {
+              type: 'string',
+              description: 'Channel ID to read images from',
+            },
+            messageId: {
+              type: 'string',
+              description: 'Specific message ID (optional - if not provided, searches recent messages)',
+            },
+            limit: {
+              type: 'number',
+              description: 'Number of recent messages to search for images (1-10)',
+              minimum: 1,
+              maximum: 10,
+            },
+            includeMetadata: {
+              type: 'boolean',
+              description: 'Include image metadata (dimensions, file size, etc.)',
+            },
+            downloadImages: {
+              type: 'boolean',
+              description: 'Download and analyze image content (slower but more detailed)',
+            },
+          },
+          required: ['channelId'],
+        },
+      },
+
       // Privacy Management Tools
       {
         name: 'set_channel_private',
@@ -2438,6 +2471,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const result = await discordService.readMessages(parsed.channelId, parsed.count);
             return { content: [{ type: 'text', text: result }] };
           }
+          case 'read_images': {
+            const parsed = schemas.ReadImagesSchema.parse(params);
+            const result = await discordService.readImages(
+              parsed.channelId, 
+              parsed.messageId, 
+              parsed.limit, 
+              parsed.includeMetadata, 
+              parsed.downloadImages
+            );
+            return { content: [{ type: 'text', text: result }] };
+          }
           // Note: For brevity, I'm including key actions here. In production, 
           // all 109+ actions would be mapped following the same pattern
           default:
@@ -2913,6 +2957,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'get_message_attachments': {
         const parsed = schemas.GetMessageAttachmentsSchema.parse(args);
         const result = await discordService.getMessageAttachments(parsed.channelId, parsed.messageId);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
+      case 'read_images': {
+        const parsed = schemas.ReadImagesSchema.parse(args);
+        const result = await discordService.readImages(
+          parsed.channelId, 
+          parsed.messageId, 
+          parsed.limit, 
+          parsed.includeMetadata, 
+          parsed.downloadImages
+        );
         return { content: [{ type: 'text', text: result }] };
       }
 
@@ -3592,6 +3648,17 @@ async function main() {
                       case 'get_message_attachments': {
                         const parsed = schemas.GetMessageAttachmentsSchema.parse(args);
                         result = await discordService.getMessageAttachments(parsed.channelId, parsed.messageId);
+                        break;
+                      }
+                      case 'read_images': {
+                        const parsed = schemas.ReadImagesSchema.parse(args);
+                        result = await discordService.readImages(
+                          parsed.channelId, 
+                          parsed.messageId, 
+                          parsed.limit, 
+                          parsed.includeMetadata, 
+                          parsed.downloadImages
+                        );
                         break;
                       }
 

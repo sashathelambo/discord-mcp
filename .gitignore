@@ -38,4 +38,27 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Test files
 test-mcp-remote-local.js
+test-channel-positioning.js
+
+# Documentation and analysis files (generated/temporary)
+ARCHITECTURE_PATTERNS.md
+VOICE_AUDIO_IMPLEMENTATION.md
+channel_migration_map.md
+discord_audit_report.md
+discord_channels_structure.csv
+implementation_guide.md
+optimal_category_structure.md
+
+# Utility scripts (temporary)
+update_channels.js
+
+# Temporary analysis files
+*.csv
+*_report.md
+*_analysis.md
+*_guide.md
+*_patterns.md
+*_implementation.md

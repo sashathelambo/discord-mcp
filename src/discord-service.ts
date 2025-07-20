@@ -1343,6 +1343,83 @@ Boosts:
     }
   }
 
+  // Channel Management Tools
+  async setChannelPosition(guildId: string | undefined, channelId: string, position: number): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Guild not found");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel) {
+        throw new Error("Channel not found in this guild");
+      }
+
+      // Cast to a channel type that supports setPosition
+      const editableChannel = channel as any;
+      if (typeof editableChannel.setPosition !== 'function') {
+        throw new Error("Channel type does not support position changes");
+      }
+
+      await editableChannel.setPosition(position);
+      
+      return `Successfully moved channel "${channel.name}" to position ${position}`;
+    } catch (error) {
+      throw new Error(`Failed to set channel position: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async setChannelPositions(guildId: string | undefined, channelPositions: Array<{channelId: string, position: number}>): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Guild not found");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const positionChanges: Array<{channel: any, position: number}> = [];
+      
+      // Validate all channels and positions
+      for (const { channelId, position } of channelPositions) {
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel) {
+          throw new Error(`Channel with ID ${channelId} not found in this guild`);
+        }
+        
+        positionChanges.push({ channel, position });
+      }
+
+      // Apply position changes
+      await guild.channels.setPositions(positionChanges);
+      
+      const changedChannels = positionChanges.map(({ channel, position }) => 
+        `${channel.name} to position ${position}`
+      ).join(', ');
+
+      return `Successfully updated channel positions: ${changedChannels}`;
+    } catch (error) {
+      throw new Error(`Failed to set channel positions: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   // Permission Management Tools
   async setChannelPermissions(
     channelId: string, 

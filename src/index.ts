@@ -744,6 +744,60 @@ const getAllTools = () => [
           required: ['rolePositions'],
         },
       },
+      {
+        name: 'set_channel_position',
+        description: 'Move a channel to a specific position',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+            channelId: {
+              type: 'string',
+              description: 'Channel ID',
+            },
+            position: {
+              type: 'number',
+              description: 'New position (0-based)',
+            },
+          },
+          required: ['channelId', 'position'],
+        },
+      },
+      {
+        name: 'set_channel_positions',
+        description: 'Move multiple channels to specific positions',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+            channelPositions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  channelId: {
+                    type: 'string',
+                    description: 'Channel ID',
+                  },
+                  position: {
+                    type: 'number',
+                    description: 'New position (0-based)',
+                  },
+                },
+                required: ['channelId', 'position'],
+              },
+              description: 'Array of channel position updates',
+            },
+          },
+          required: ['channelPositions'],
+        },
+      },
 
       // Additional Message Management Tools
       {
@@ -1971,6 +2025,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: result }] };
       }
 
+      case 'set_channel_position': {
+        const parsed = schemas.SetChannelPositionSchema.parse(args);
+        const result = await discordService.setChannelPosition(parsed.guildId, parsed.channelId, parsed.position);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
+      case 'set_channel_positions': {
+        const parsed = schemas.SetChannelPositionsSchema.parse(args);
+        const result = await discordService.setChannelPositions(parsed.guildId, parsed.channelPositions);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
       // Additional Message Management
       case 'pin_message': {
         const parsed = schemas.PinMessageSchema.parse(args);
@@ -2502,6 +2568,18 @@ async function main() {
                       case 'set_role_positions': {
                         const parsed = schemas.SetRolePositionsSchema.parse(args);
                         result = await discordService.setRolePositions(parsed.guildId, parsed.rolePositions);
+                        break;
+                      }
+
+                      case 'set_channel_position': {
+                        const parsed = schemas.SetChannelPositionSchema.parse(args);
+                        result = await discordService.setChannelPosition(parsed.guildId, parsed.channelId, parsed.position);
+                        break;
+                      }
+
+                      case 'set_channel_positions': {
+                        const parsed = schemas.SetChannelPositionsSchema.parse(args);
+                        result = await discordService.setChannelPositions(parsed.guildId, parsed.channelPositions);
                         break;
                       }
 

@@ -272,7 +272,19 @@ export const SetRolePositionsSchema = z.object({
   })).describe("Array of role position updates")
 });
 
+export const SetChannelPositionSchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID"),
+  channelId: z.string().describe("Channel ID"),
+  position: z.number().describe("New position")
+});
 
+export const SetChannelPositionsSchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID"),
+  channelPositions: z.array(z.object({
+    channelId: z.string().describe("Channel ID"),
+    position: z.number().describe("New position")
+  })).describe("Array of channel position updates")
+});
 
 // Tool parameter schemas using Zod for validation
 export const ServerInfoSchema = z.object({

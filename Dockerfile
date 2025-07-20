@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -17,9 +17,12 @@ WORKDIR /app
 # Install necessary packages for networking and stdio handling
 RUN apk add --no-cache dumb-init
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+# Copy package files and install only production dependencies
 COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built application and startup script
+COPY --from=builder /app/dist ./dist
 COPY start.sh ./
 
 # Make startup script executable

@@ -465,6 +465,811 @@ Boosts:
     }
   }
 
+  async createForumChannel(guildId: string | undefined, name: string, categoryId?: string, options?: {
+    topic?: string,
+    slowmode?: number,
+    defaultReactionEmoji?: string,
+    isPrivate?: boolean,
+    allowedRoles?: string[]
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channelOptions: any = {
+        name,
+        type: ChannelType.GuildForum
+      };
+
+      // Add optional properties
+      if (options?.topic) {
+        channelOptions.topic = options.topic;
+      }
+      if (options?.slowmode && options.slowmode > 0) {
+        if (options.slowmode > 21600) { // Max 6 hours
+          throw new Error("Slowmode cannot exceed 21600 seconds (6 hours)");
+        }
+        channelOptions.rateLimitPerUser = options.slowmode;
+      }
+      if (options?.defaultReactionEmoji) {
+        channelOptions.defaultReactionEmoji = options.defaultReactionEmoji;
+      }
+
+      // Handle category
+      if (categoryId) {
+        const category = guild.channels.cache.get(categoryId) as CategoryChannel;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+          throw new Error("Category not found by categoryId");
+        }
+        channelOptions.parent = category;
+      }
+
+      const forumChannel = await guild.channels.create(channelOptions);
+
+      // Set privacy and role permissions if specified
+      if (options?.isPrivate || options?.allowedRoles) {
+        await this.configureChannelPrivacy(forumChannel, options.isPrivate, options.allowedRoles, guild);
+      }
+
+      const details = [];
+      if (options?.topic) details.push(`topic: "${options.topic}"`);
+      if (options?.slowmode) details.push(`slowmode: ${options.slowmode}s`);
+      if (options?.isPrivate) details.push("private channel");
+      if (options?.allowedRoles?.length) details.push(`${options.allowedRoles.length} role(s) granted access`);
+
+      return `Created forum channel: ${forumChannel.name} (ID: ${forumChannel.id})${categoryId ? ` in category` : ''}${details.length > 0 ? ` with ${details.join(', ')}` : ''}`;
+    } catch (error) {
+      throw new Error(`Failed to create forum channel: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async createAnnouncementChannel(guildId: string | undefined, name: string, categoryId?: string, options?: {
+    topic?: string,
+    slowmode?: number,
+    isPrivate?: boolean,
+    allowedRoles?: string[]
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channelOptions: any = {
+        name,
+        type: ChannelType.GuildAnnouncement
+      };
+
+      // Add optional properties
+      if (options?.topic) {
+        channelOptions.topic = options.topic;
+      }
+      if (options?.slowmode && options.slowmode > 0) {
+        if (options.slowmode > 21600) {
+          throw new Error("Slowmode cannot exceed 21600 seconds (6 hours)");
+        }
+        channelOptions.rateLimitPerUser = options.slowmode;
+      }
+
+      // Handle category
+      if (categoryId) {
+        const category = guild.channels.cache.get(categoryId) as CategoryChannel;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+          throw new Error("Category not found by categoryId");
+        }
+        channelOptions.parent = category;
+      }
+
+      const announcementChannel = await guild.channels.create(channelOptions);
+
+      // Set privacy and role permissions if specified
+      if (options?.isPrivate || options?.allowedRoles) {
+        await this.configureChannelPrivacy(announcementChannel, options.isPrivate, options.allowedRoles, guild);
+      }
+
+      const details = [];
+      if (options?.topic) details.push(`topic: "${options.topic}"`);
+      if (options?.slowmode) details.push(`slowmode: ${options.slowmode}s`);
+      if (options?.isPrivate) details.push("private channel");
+      if (options?.allowedRoles?.length) details.push(`${options.allowedRoles.length} role(s) granted access`);
+
+      return `Created announcement channel: ${announcementChannel.name} (ID: ${announcementChannel.id})${categoryId ? ` in category` : ''}${details.length > 0 ? ` with ${details.join(', ')}` : ''}`;
+    } catch (error) {
+      throw new Error(`Failed to create announcement channel: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async createStageChannel(guildId: string | undefined, name: string, categoryId?: string, options?: {
+    topic?: string,
+    bitrate?: number,
+    isPrivate?: boolean,
+    allowedRoles?: string[]
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channelOptions: any = {
+        name,
+        type: ChannelType.GuildStageVoice
+      };
+
+      // Add optional properties
+      if (options?.topic) {
+        channelOptions.topic = options.topic;
+      }
+      if (options?.bitrate) {
+        const maxBitrate = guild.maximumBitrate || 64000;
+        if (options.bitrate < 8000 || options.bitrate > maxBitrate) {
+          throw new Error(`Bitrate must be between 8000 and ${maxBitrate} (server's maximum based on boost level)`);
+        }
+        channelOptions.bitrate = options.bitrate;
+      }
+
+      // Handle category
+      if (categoryId) {
+        const category = guild.channels.cache.get(categoryId) as CategoryChannel;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+          throw new Error("Category not found by categoryId");
+        }
+        channelOptions.parent = category;
+      }
+
+      const stageChannel = await guild.channels.create(channelOptions);
+
+      // Set privacy and role permissions if specified
+      if (options?.isPrivate || options?.allowedRoles) {
+        await this.configureChannelPrivacy(stageChannel, options.isPrivate, options.allowedRoles, guild);
+      }
+
+      const details = [];
+      if (options?.topic) details.push(`topic: "${options.topic}"`);
+      if (options?.bitrate) details.push(`bitrate: ${options.bitrate}kbps`);
+      if (options?.isPrivate) details.push("private channel");
+      if (options?.allowedRoles?.length) details.push(`${options.allowedRoles.length} role(s) granted access`);
+
+      return `Created stage channel: ${stageChannel.name} (ID: ${stageChannel.id})${categoryId ? ` in category` : ''}${details.length > 0 ? ` with ${details.join(', ')}` : ''}`;
+    } catch (error) {
+      throw new Error(`Failed to create stage channel: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private async configureChannelPrivacy(channel: any, isPrivate?: boolean, allowedRoles?: string[], guild?: any): Promise<void> {
+    if (!isPrivate && !allowedRoles?.length) return;
+
+    try {
+      const permissionOverwrites = [];
+
+      // If private, deny @everyone access first
+      if (isPrivate) {
+        permissionOverwrites.push({
+          id: guild.id, // @everyone role
+          deny: [PermissionFlagsBits.ViewChannel],
+          type: 0 // Role type
+        });
+      }
+
+      // Grant access to specific roles
+      if (allowedRoles?.length) {
+        for (const roleId of allowedRoles) {
+          const role = guild.roles.cache.get(roleId);
+          if (!role) {
+            throw new Error(`Role not found: ${roleId}`);
+          }
+          
+          permissionOverwrites.push({
+            id: roleId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect], // Connect for voice channels
+            type: 0 // Role type
+          });
+        }
+      }
+
+      // Apply permission overwrites
+      if (permissionOverwrites.length > 0) {
+        await channel.permissionOverwrites.set(permissionOverwrites);
+      }
+    } catch (error) {
+      throw new Error(`Failed to configure channel privacy: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async editChannelAdvanced(guildId: string | undefined, channelId: string, options: {
+    name?: string,
+    topic?: string,
+    slowmode?: number,
+    userLimit?: number,
+    bitrate?: number,
+    isPrivate?: boolean,
+    allowedRoles?: string[],
+    categoryId?: string | null
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel) {
+        throw new Error(`Channel not found: ${channelId}`);
+      }
+
+      const editOptions: any = {};
+      const changes: string[] = [];
+
+      // Basic properties
+      if (options.name !== undefined) {
+        if (options.name.length === 0 || options.name.length > 100) {
+          throw new Error("Channel name must be between 1 and 100 characters");
+        }
+        editOptions.name = options.name;
+        changes.push(`name to "${options.name}"`);
+      }
+
+      if (options.topic !== undefined) {
+        if (options.topic.length > 1024) {
+          throw new Error("Channel topic cannot exceed 1024 characters");
+        }
+        editOptions.topic = options.topic;
+        changes.push(`topic to "${options.topic}"`);
+      }
+
+      // Rate limiting (slowmode)
+      if (options.slowmode !== undefined) {
+        if (options.slowmode < 0 || options.slowmode > 21600) {
+          throw new Error("Slowmode must be between 0 and 21600 seconds (6 hours)");
+        }
+        editOptions.rateLimitPerUser = options.slowmode;
+        changes.push(`slowmode to ${options.slowmode}s`);
+      }
+
+      // Voice-specific options
+      if (options.userLimit !== undefined) {
+        if (channel.type !== ChannelType.GuildVoice && channel.type !== ChannelType.GuildStageVoice) {
+          throw new Error("User limit can only be set on voice and stage channels");
+        }
+        if (options.userLimit < 0 || options.userLimit > 99) {
+          throw new Error("User limit must be between 0 and 99 (0 = unlimited)");
+        }
+        editOptions.userLimit = options.userLimit;
+        changes.push(`user limit to ${options.userLimit === 0 ? 'unlimited' : options.userLimit}`);
+      }
+
+      if (options.bitrate !== undefined) {
+        if (channel.type !== ChannelType.GuildVoice && channel.type !== ChannelType.GuildStageVoice) {
+          throw new Error("Bitrate can only be set on voice and stage channels");
+        }
+        const maxBitrate = guild.maximumBitrate || 64000;
+        if (options.bitrate < 8000 || options.bitrate > maxBitrate) {
+          throw new Error(`Bitrate must be between 8000 and ${maxBitrate} (server's maximum based on boost level)`);
+        }
+        editOptions.bitrate = options.bitrate;
+        changes.push(`bitrate to ${options.bitrate}kbps`);
+      }
+
+      // Category change
+      if (options.categoryId !== undefined) {
+        if (options.categoryId === null) {
+          editOptions.parent = null;
+          changes.push("removed from category");
+        } else {
+          const category = guild.channels.cache.get(options.categoryId);
+          if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new Error("Category not found by categoryId");
+          }
+          editOptions.parent = category;
+          changes.push(`moved to category "${category.name}"`);
+        }
+      }
+
+      // Apply basic edits
+      if (Object.keys(editOptions).length > 0) {
+        await channel.edit(editOptions);
+      }
+
+      // Handle privacy settings separately
+      if (options.isPrivate !== undefined || options.allowedRoles !== undefined) {
+        await this.configureChannelPrivacy(channel, options.isPrivate, options.allowedRoles, guild);
+        if (options.isPrivate) changes.push("made private");
+        if (options.allowedRoles?.length) changes.push(`granted access to ${options.allowedRoles.length} role(s)`);
+      }
+
+      if (changes.length === 0) {
+        return "No changes specified for channel edit";
+      }
+
+      return `Successfully edited channel "${channel.name}" (ID: ${channelId}). Changed: ${changes.join(', ')}`;
+    } catch (error) {
+      throw new Error(`Failed to edit channel: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async setChannelPrivate(guildId: string | undefined, channelId: string, options: {
+    isPrivate: boolean,
+    allowedRoles?: string[],
+    allowedMembers?: string[],
+    syncToCategory?: boolean
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel) {
+        throw new Error(`Channel not found: ${channelId}`);
+      }
+
+      const permissionOverwrites = [];
+      const changes: string[] = [];
+
+      if (options.isPrivate) {
+        // Make private: deny @everyone access
+        permissionOverwrites.push({
+          id: guild.id, // @everyone role
+          deny: [PermissionFlagsBits.ViewChannel],
+          type: 0 // Role type
+        });
+        changes.push("made private (denied @everyone access)");
+      } else {
+        // Make public: allow @everyone access
+        permissionOverwrites.push({
+          id: guild.id, // @everyone role
+          allow: [PermissionFlagsBits.ViewChannel],
+          type: 0 // Role type
+        });
+        changes.push("made public (granted @everyone access)");
+      }
+
+      // Grant access to specific roles
+      if (options.allowedRoles?.length) {
+        for (const roleId of options.allowedRoles) {
+          const role = guild.roles.cache.get(roleId);
+          if (!role) {
+            throw new Error(`Role not found: ${roleId}`);
+          }
+          
+          const permissions = [PermissionFlagsBits.ViewChannel];
+          // Add Connect permission for voice channels
+          if (channel.type === ChannelType.GuildVoice || channel.type === ChannelType.GuildStageVoice) {
+            permissions.push(PermissionFlagsBits.Connect);
+          }
+          
+          permissionOverwrites.push({
+            id: roleId,
+            allow: permissions,
+            type: 0 // Role type
+          });
+        }
+        changes.push(`granted access to ${options.allowedRoles.length} role(s)`);
+      }
+
+      // Grant access to specific members
+      if (options.allowedMembers?.length) {
+        for (const memberId of options.allowedMembers) {
+          const member = guild.members.cache.get(memberId);
+          if (!member) {
+            throw new Error(`Member not found: ${memberId}`);
+          }
+          
+          const permissions = [PermissionFlagsBits.ViewChannel];
+          // Add Connect permission for voice channels
+          if (channel.type === ChannelType.GuildVoice || channel.type === ChannelType.GuildStageVoice) {
+            permissions.push(PermissionFlagsBits.Connect);
+          }
+          
+          permissionOverwrites.push({
+            id: memberId,
+            allow: permissions,
+            type: 1 // Member type
+          });
+        }
+        changes.push(`granted access to ${options.allowedMembers.length} member(s)`);
+      }
+
+      // Apply permission overwrites
+      await (channel as any).permissionOverwrites.set(permissionOverwrites);
+
+      // Optionally sync to category
+      if (options.syncToCategory && channel.parent) {
+        try {
+          await (channel as any).lockPermissions();
+          changes.push("synced permissions with category");
+        } catch (error) {
+          // Don't fail the whole operation if sync fails
+          changes.push("(failed to sync with category)");
+        }
+      }
+
+      return `Successfully updated privacy for channel "${channel.name}" (ID: ${channelId}). Changes: ${changes.join(', ')}`;
+    } catch (error) {
+      throw new Error(`Failed to set channel privacy: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async setCategoryPrivate(guildId: string | undefined, categoryId: string, options: {
+    isPrivate: boolean,
+    allowedRoles?: string[],
+    allowedMembers?: string[],
+    applyToChannels?: boolean
+  }): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const category = guild.channels.cache.get(categoryId);
+      if (!category || category.type !== ChannelType.GuildCategory) {
+        throw new Error(`Category not found or not a category: ${categoryId}`);
+      }
+
+      const permissionOverwrites = [];
+      const changes: string[] = [];
+
+      if (options.isPrivate) {
+        // Make private: deny @everyone access
+        permissionOverwrites.push({
+          id: guild.id, // @everyone role
+          deny: [PermissionFlagsBits.ViewChannel],
+          type: 0 // Role type
+        });
+        changes.push("made private (denied @everyone access)");
+      } else {
+        // Make public: allow @everyone access
+        permissionOverwrites.push({
+          id: guild.id, // @everyone role
+          allow: [PermissionFlagsBits.ViewChannel],
+          type: 0 // Role type
+        });
+        changes.push("made public (granted @everyone access)");
+      }
+
+      // Grant access to specific roles
+      if (options.allowedRoles?.length) {
+        for (const roleId of options.allowedRoles) {
+          const role = guild.roles.cache.get(roleId);
+          if (!role) {
+            throw new Error(`Role not found: ${roleId}`);
+          }
+          
+          permissionOverwrites.push({
+            id: roleId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect],
+            type: 0 // Role type
+          });
+        }
+        changes.push(`granted access to ${options.allowedRoles.length} role(s)`);
+      }
+
+      // Grant access to specific members
+      if (options.allowedMembers?.length) {
+        for (const memberId of options.allowedMembers) {
+          const member = guild.members.cache.get(memberId);
+          if (!member) {
+            throw new Error(`Member not found: ${memberId}`);
+          }
+          
+          permissionOverwrites.push({
+            id: memberId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect],
+            type: 1 // Member type
+          });
+        }
+        changes.push(`granted access to ${options.allowedMembers.length} member(s)`);
+      }
+
+      // Apply permission overwrites to category
+      await category.permissionOverwrites.set(permissionOverwrites);
+
+      // Optionally apply to all channels in category
+      if (options.applyToChannels) {
+        const channelsInCategory = guild.channels.cache.filter(ch => ch.parentId === categoryId);
+        let syncedChannels = 0;
+        
+        for (const [, channel] of channelsInCategory) {
+          try {
+            await (channel as any).lockPermissions();
+            syncedChannels++;
+          } catch (error) {
+            // Continue with other channels if one fails
+          }
+        }
+        
+        if (syncedChannels > 0) {
+          changes.push(`applied to ${syncedChannels} channel(s) in category`);
+        }
+      }
+
+      return `Successfully updated privacy for category "${category.name}" (ID: ${categoryId}). Changes: ${changes.join(', ')}`;
+    } catch (error) {
+      throw new Error(`Failed to set category privacy: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async bulkSetPrivacy(guildId: string | undefined, targets: Array<{
+    id: string,
+    type: 'channel' | 'category',
+    isPrivate: boolean,
+    allowedRoles?: string[],
+    allowedMembers?: string[]
+  }>): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      const results: string[] = [];
+      let successCount = 0;
+      let failureCount = 0;
+
+      for (const target of targets) {
+        try {
+          if (target.type === 'channel') {
+            await this.setChannelPrivate(guildId, target.id, {
+              isPrivate: target.isPrivate,
+              allowedRoles: target.allowedRoles,
+              allowedMembers: target.allowedMembers
+            });
+          } else if (target.type === 'category') {
+            await this.setCategoryPrivate(guildId, target.id, {
+              isPrivate: target.isPrivate,
+              allowedRoles: target.allowedRoles,
+              allowedMembers: target.allowedMembers
+            });
+          }
+          successCount++;
+        } catch (error) {
+          failureCount++;
+          results.push(`Failed ${target.type} ${target.id}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      const summary = [`Successfully updated ${successCount} target(s)`];
+      if (failureCount > 0) {
+        summary.push(`${failureCount} failed`);
+      }
+
+      if (results.length > 0) {
+        summary.push(`Errors: ${results.join('; ')}`);
+      }
+
+      return summary.join('. ');
+    } catch (error) {
+      throw new Error(`Failed bulk privacy update: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async comprehensiveChannelManagement(guildId: string | undefined, operations: any[]): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    const results: string[] = [];
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (let i = 0; i < operations.length; i++) {
+      const operation = operations[i];
+      const operationId = `Operation ${i + 1} (${operation.action})`;
+
+      try {
+        let result = '';
+
+        switch (operation.action) {
+          case 'create_text_channel':
+            result = await this.createTextChannel(resolvedGuildId, operation.name, operation.categoryId);
+            break;
+
+          case 'create_voice_channel':
+            result = await this.createVoiceChannel(resolvedGuildId, operation.name, operation.categoryId, operation.userLimit, operation.bitrate);
+            break;
+
+          case 'create_forum_channel':
+            result = await this.createForumChannel(resolvedGuildId, operation.name, operation.categoryId, {
+              topic: operation.topic,
+              slowmode: operation.slowmode,
+              defaultReactionEmoji: operation.defaultReactionEmoji,
+              isPrivate: operation.isPrivate,
+              allowedRoles: operation.allowedRoles
+            });
+            break;
+
+          case 'create_announcement_channel':
+            result = await this.createAnnouncementChannel(resolvedGuildId, operation.name, operation.categoryId, {
+              topic: operation.topic,
+              slowmode: operation.slowmode,
+              isPrivate: operation.isPrivate,
+              allowedRoles: operation.allowedRoles
+            });
+            break;
+
+          case 'create_stage_channel':
+            result = await this.createStageChannel(resolvedGuildId, operation.name, operation.categoryId, {
+              topic: operation.topic,
+              bitrate: operation.bitrate,
+              isPrivate: operation.isPrivate,
+              allowedRoles: operation.allowedRoles
+            });
+            break;
+
+          case 'create_category':
+            result = await this.createCategory(resolvedGuildId, operation.name);
+            break;
+
+          case 'edit_channel_advanced':
+            if (!operation.channelId) {
+              throw new Error("channelId required for edit_channel_advanced");
+            }
+            result = await this.editChannelAdvanced(resolvedGuildId, operation.channelId, {
+              name: operation.name,
+              topic: operation.topic,
+              slowmode: operation.slowmode,
+              userLimit: operation.userLimit,
+              bitrate: operation.bitrate,
+              isPrivate: operation.isPrivate,
+              allowedRoles: operation.allowedRoles,
+              categoryId: operation.categoryId
+            });
+            break;
+
+          case 'delete_channel':
+            if (!operation.channelId) {
+              throw new Error("channelId required for delete_channel");
+            }
+            result = await this.deleteChannel(resolvedGuildId, operation.channelId);
+            break;
+
+          case 'delete_category':
+            if (!operation.targetCategoryId) {
+              throw new Error("targetCategoryId required for delete_category");
+            }
+            result = await this.deleteCategory(resolvedGuildId, operation.targetCategoryId);
+            break;
+
+          case 'set_channel_position':
+            if (!operation.channelId || operation.position === undefined) {
+              throw new Error("channelId and position required for set_channel_position");
+            }
+            result = await this.setChannelPosition(resolvedGuildId, operation.channelId, operation.position);
+            break;
+
+          case 'set_category_position':
+            if (!operation.targetCategoryId || operation.position === undefined) {
+              throw new Error("targetCategoryId and position required for set_category_position");
+            }
+            result = await this.setCategoryPosition(resolvedGuildId, operation.targetCategoryId, operation.position);
+            break;
+
+          case 'move_channel_to_category':
+            if (!operation.channelId) {
+              throw new Error("channelId required for move_channel_to_category");
+            }
+            result = await this.moveChannelToCategory(resolvedGuildId, operation.channelId, operation.categoryId);
+            break;
+
+          case 'set_channel_private':
+            if (!operation.channelId || operation.isPrivate === undefined) {
+              throw new Error("channelId and isPrivate required for set_channel_private");
+            }
+            result = await this.setChannelPrivate(resolvedGuildId, operation.channelId, {
+              isPrivate: operation.isPrivate,
+              allowedRoles: operation.allowedRoles,
+              allowedMembers: operation.allowedMembers,
+              syncToCategory: operation.syncToCategory
+            });
+            break;
+
+          case 'set_category_private':
+            if (!operation.targetCategoryId || operation.isPrivate === undefined) {
+              throw new Error("targetCategoryId and isPrivate required for set_category_private");
+            }
+            result = await this.setCategoryPrivate(resolvedGuildId, operation.targetCategoryId, {
+              isPrivate: operation.isPrivate,
+              allowedRoles: operation.allowedRoles,
+              allowedMembers: operation.allowedMembers,
+              applyToChannels: operation.applyToChannels
+            });
+            break;
+
+          default:
+            throw new Error(`Unknown action: ${operation.action}`);
+        }
+
+        results.push(`✅ ${operationId}: ${result}`);
+        successCount++;
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        results.push(`❌ ${operationId}: ${errorMsg}`);
+        failureCount++;
+      }
+    }
+
+    const summary = [
+      `Comprehensive Channel Management completed: ${successCount} succeeded, ${failureCount} failed`,
+      '',
+      'Detailed Results:',
+      ...results
+    ];
+
+    return summary.join('\n');
+  }
+
   async deleteChannel(guildId: string | undefined, channelId: string): Promise<string> {
     this.ensureReady();
     const resolvedGuildId = this.resolveGuildId(guildId);

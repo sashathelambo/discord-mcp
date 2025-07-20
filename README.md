@@ -19,9 +19,9 @@
 
 ## 📖 Description
 
-A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), providing **83 powerful tools** for complete Discord server management and automation through MCP-compatible applications like Claude Desktop.
+A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), providing **87 powerful tools** for complete Discord server management and automation through MCP-compatible applications like Claude Desktop.
 
-**🚀 NEW MAJOR UPDATE:** We've expanded from 76 to **83 total tools**, adding 6 powerful channel organization capabilities and voice channel creation for complete server structure management!
+**🚀 NEW MAJOR UPDATE:** We've expanded from 83 to **87 total tools**, adding 3 powerful privacy management capabilities and 1 comprehensive all-in-one channel management tool!
 
 Transform your AI assistants into Discord powerhouses with comprehensive server management, voice channel control, advanced moderation, detailed analytics, and rich interactive components.
 
@@ -34,6 +34,7 @@ Transform your AI assistants into Discord powerhouses with comprehensive server 
 - **📊 Analytics & Logging** - Detailed server statistics and chat log exports
 - **🎯 Interactive Components** - Buttons, select menus, embeds, and modals
 - **🏗️ Channel Organization** - Complete channel and category positioning and management
+- **🔒 Privacy Management** - Granular access control for channels and categories with role/member permissions
 - **⚙️ Server Administration** - Complete server settings and welcome screen management
 - **🔗 Dual Transport** - Both stdio and HTTP JSON-RPC support
 
@@ -146,7 +147,7 @@ Install Discord MCP Server automatically via [Smithery](https://smithery.ai/):
 npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 ```
 
-## 🛠️ Available Tools (83 Total)
+## 🛠️ Available Tools (87 Total)
 
 > **Note:** If `DISCORD_GUILD_ID` is set in your environment, the `guildId` parameter becomes optional for all tools that accept it.
 
@@ -202,7 +203,7 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 - **`get_roles`** - List all server roles
 - **`set_role_positions`** - Set role hierarchy positions
 
-### 📢 Channel Management (15 tools)
+### 📢 Channel Management (19 tools)
 - **`create_text_channel`** - Create a text channel
 - **`create_voice_channel`** - Create a voice channel with customizable settings
 - **`delete_channel`** - Delete a channel
@@ -218,6 +219,10 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 - **`set_category_position`** - Move a category to a specific position
 - **`organize_channels`** - Comprehensive server reorganization in one command
 - **`get_channel_structure`** - View current server structure with visual layout
+- **`set_channel_private`** - Make channels private/public with role and member access control
+- **`set_category_private`** - Make categories private/public with role and member access control
+- **`bulk_set_privacy`** - Set privacy for multiple channels and categories in one operation
+- **`comprehensive_channel_management`** - All-in-one tool that performs multiple channel operations in sequence
 
 ### 🎨 Emoji & Sticker Management (6 tools)
 - **`create_emoji`** - Create a custom emoji
@@ -351,12 +356,85 @@ The Discord MCP server includes powerful channel organization capabilities for c
 }
 ```
 
-### 🛡️ Organization Requirements
-- Bot requires **"Manage Channels"** permission
+**Privacy Management Examples:**
+
+```json
+{
+  "name": "set_channel_private",
+  "arguments": {
+    "channelId": "123456789",
+    "isPrivate": true,
+    "allowedRoles": ["role1", "role2"],
+    "syncToCategory": false
+  }
+}
+```
+
+```json
+{
+  "name": "bulk_set_privacy",
+  "arguments": {
+    "targets": [
+      {
+        "id": "channel1",
+        "type": "channel",
+        "isPrivate": true,
+        "allowedRoles": ["moderators"]
+      },
+      {
+        "id": "category1", 
+        "type": "category",
+        "isPrivate": false
+      }
+    ]
+  }
+}
+```
+
+**Comprehensive Channel Management Examples:**
+
+```json
+{
+  "name": "comprehensive_channel_management",
+  "arguments": {
+    "operations": [
+      {
+        "action": "create_category",
+        "name": "Gaming Section"
+      },
+      {
+        "action": "create_voice_channel", 
+        "name": "General Voice",
+        "categoryId": "new_category_id",
+        "userLimit": 10
+      },
+      {
+        "action": "create_text_channel",
+        "name": "gaming-chat",
+        "categoryId": "new_category_id"
+      },
+      {
+        "action": "set_category_private",
+        "targetCategoryId": "new_category_id",
+        "isPrivate": true,
+        "allowedRoles": ["gamers", "moderators"],
+        "applyToChannels": true
+      }
+    ]
+  }
+}
+```
+
+### 🛡️ Organization & Privacy Requirements
+- Bot requires **"Manage Channels"** permission for organization
+- Bot requires **"Manage Roles"** permission for privacy management
 - Works with text channels, voice channels, and categories
 - Supports both individual and bulk operations
 - Position-based ordering (0-based indexing)
 - Category assignment and removal capabilities
+- Role-based and member-based access control for privacy
+- Sequential operation execution with detailed success/failure reporting
+- All 14 channel management actions available in one comprehensive tool
 
 ## 🚀 Development
 
@@ -409,6 +487,7 @@ discord-mcp/
 - **📅 Event Coordination** - Streamlined event planning and management
 - **🎵 Music & Audio** - Voice channel management and audio playback
 - **🏗️ Server Organization** - Intelligent channel and category structure management
+- **🔒 Privacy Management** - Granular access control for channels and categories
 - **📈 Growth Tracking** - Server statistics and member insights
 - **🔧 Server Administration** - Complete server configuration and management
 

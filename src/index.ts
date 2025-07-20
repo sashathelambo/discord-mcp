@@ -679,18 +679,125 @@ async function main() {
         }
         
         try {
-          if (url.pathname === '/sse' && req.method === 'GET') {
-            // SSE connection for mcp-remote
+          if (req.method === 'POST' && req.headers['content-type']?.includes('application/json')) {
+            // Handle JSON-RPC over HTTP (mcp-remote style)
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+              try {
+                const message = JSON.parse(body);
+                
+                // Handle the JSON-RPC request directly
+                if (message.method === 'initialize') {
+                  const response = {
+                    jsonrpc: "2.0",
+                    id: message.id,
+                    result: {
+                      protocolVersion: "2024-11-05",
+                      capabilities: {
+                        tools: {}
+                      },
+                      serverInfo: {
+                        name: "discord-mcp-server",
+                        version: "0.0.1"
+                      }
+                    }
+                  };
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify(response));
+                  
+                } else if (message.method === 'tools/list') {
+                  // Return tools list
+                  const tools = [
+                    { name: 'get_server_info', description: 'Get detailed discord server information' },
+                    { name: 'send_message', description: 'Send a message to a specific channel' },
+                    { name: 'edit_message', description: 'Edit a message from a specific channel' },
+                    { name: 'delete_message', description: 'Delete a message from a specific channel' },
+                    { name: 'read_messages', description: 'Read recent message history from a specific channel' }
+                  ];
+                  const response = {
+                    jsonrpc: "2.0",
+                    id: message.id,
+                    result: { tools }
+                  };
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify(response));
+                  
+                } else if (message.method === 'tools/call') {
+                  // Handle tool call by name
+                  try {
+                    const { name, arguments: args } = message.params;
+                    let result;
+                    
+                    switch (name) {
+                      case 'get_server_info':
+                        const parsed = schemas.ServerInfoSchema.parse(args);
+                        result = await discordService.getServerInfo(parsed.guildId);
+                        break;
+                      case 'send_message':
+                        const msgParsed = schemas.SendMessageSchema.parse(args);
+                        result = await discordService.sendMessage(msgParsed.channelId, msgParsed.message);
+                        break;
+                      default:
+                        throw new Error(`Unknown tool: ${name}`);
+                    }
+                    
+                    const response = {
+                      jsonrpc: "2.0",
+                      id: message.id,
+                      result: { content: [{ type: 'text', text: result }] }
+                    };
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(response));
+                  } catch (error) {
+                    const response = {
+                      jsonrpc: "2.0",
+                      id: message.id,
+                      error: {
+                        code: -32000,
+                        message: error instanceof Error ? error.message : String(error)
+                      }
+                    };
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(response));
+                  }
+                  
+                } else {
+                  // Unknown method
+                  const response = {
+                    jsonrpc: "2.0",
+                    id: message.id,
+                    error: {
+                      code: -32601,
+                      message: "Method not found"
+                    }
+                  };
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify(response));
+                }
+              } catch (error) {
+                const response = {
+                  jsonrpc: "2.0",
+                  id: null,
+                  error: {
+                    code: -32700,
+                    message: "Parse error"
+                  }
+                };
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(response));
+              }
+            });
+            
+          } else if (url.pathname === '/sse' && req.method === 'GET') {
+            // SSE connection 
             const transport = new SSEServerTransport('/message', res);
-            
-            // Store transport by session ID
             activeTransports.set(transport.sessionId, transport);
-            
-            // Connect server to transport
             await server.connect(transport);
             await transport.start();
-            
-            // Clean up when connection closes
             transport.onclose = () => {
               activeTransports.delete(transport.sessionId);
             };

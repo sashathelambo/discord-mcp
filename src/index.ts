@@ -710,13 +710,43 @@ async function main() {
                   res.end(JSON.stringify(response));
                   
                 } else if (message.method === 'tools/list') {
-                  // Return tools list
+                  // Return tools list with proper schemas
                   const tools = [
-                    { name: 'get_server_info', description: 'Get detailed discord server information' },
-                    { name: 'send_message', description: 'Send a message to a specific channel' },
-                    { name: 'edit_message', description: 'Edit a message from a specific channel' },
-                    { name: 'delete_message', description: 'Delete a message from a specific channel' },
-                    { name: 'read_messages', description: 'Read recent message history from a specific channel' }
+                    {
+                      name: 'get_server_info',
+                      description: 'Get detailed discord server information',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          guildId: { type: 'string', description: 'Discord server ID' }
+                        },
+                        required: []
+                      }
+                    },
+                    {
+                      name: 'send_message',
+                      description: 'Send a message to a specific channel',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          channelId: { type: 'string', description: 'Discord channel ID' },
+                          message: { type: 'string', description: 'Message content' }
+                        },
+                        required: ['channelId', 'message']
+                      }
+                    },
+                    {
+                      name: 'read_messages',
+                      description: 'Read recent message history from a specific channel',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          channelId: { type: 'string', description: 'Discord channel ID' },
+                          count: { type: 'string', description: 'Number of messages to retrieve' }
+                        },
+                        required: ['channelId']
+                      }
+                    }
                   ];
                   const response = {
                     jsonrpc: "2.0",
@@ -740,6 +770,10 @@ async function main() {
                       case 'send_message':
                         const msgParsed = schemas.SendMessageSchema.parse(args);
                         result = await discordService.sendMessage(msgParsed.channelId, msgParsed.message);
+                        break;
+                      case 'read_messages':
+                        const readParsed = schemas.ReadMessagesSchema.parse(args);
+                        result = await discordService.readMessages(readParsed.channelId, readParsed.count);
                         break;
                       default:
                         throw new Error(`Unknown tool: ${name}`);

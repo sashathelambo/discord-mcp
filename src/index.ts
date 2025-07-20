@@ -288,6 +288,40 @@ const getAllTools = () => [
         },
       },
       {
+        name: 'create_voice_channel',
+        description: 'Create a new voice channel',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            guildId: {
+              type: 'string',
+              description: 'Discord server ID',
+            },
+            name: {
+              type: 'string',
+              description: 'Voice channel name',
+            },
+            categoryId: {
+              type: 'string',
+              description: 'Category ID (optional)',
+            },
+            userLimit: {
+              type: 'number',
+              description: 'User limit (0-99, 0 = unlimited)',
+              minimum: 0,
+              maximum: 99,
+            },
+            bitrate: {
+              type: 'number',
+              description: 'Bitrate in bps (8000-384000, depends on server boost level)',
+              minimum: 8000,
+              maximum: 384000,
+            },
+          },
+          required: ['name'],
+        },
+      },
+      {
         name: 'delete_channel',
         description: 'Delete a channel',
         inputSchema: {
@@ -1995,6 +2029,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: result }] };
       }
 
+      case 'create_voice_channel': {
+        const parsed = schemas.CreateVoiceChannelSchema.parse(args);
+        const result = await discordService.createVoiceChannel(parsed.guildId, parsed.name, parsed.categoryId, parsed.userLimit, parsed.bitrate);
+        return { content: [{ type: 'text', text: result }] };
+      }
+
       case 'delete_channel': {
         const parsed = schemas.DeleteChannelSchema.parse(args);
         const result = await discordService.deleteChannel(parsed.guildId, parsed.channelId);
@@ -2582,6 +2622,12 @@ async function main() {
                       case 'create_text_channel': {
                         const parsed = schemas.CreateTextChannelSchema.parse(args);
                         result = await discordService.createTextChannel(parsed.guildId, parsed.name, parsed.categoryId);
+                        break;
+                      }
+
+                      case 'create_voice_channel': {
+                        const parsed = schemas.CreateVoiceChannelSchema.parse(args);
+                        result = await discordService.createVoiceChannel(parsed.guildId, parsed.name, parsed.categoryId, parsed.userLimit, parsed.bitrate);
                         break;
                       }
                       case 'delete_channel': {

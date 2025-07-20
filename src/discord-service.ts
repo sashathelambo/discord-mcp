@@ -386,6 +386,85 @@ Boosts:
     }
   }
 
+  async createVoiceChannel(guildId: string | undefined, name: string, categoryId?: string, userLimit?: number, bitrate?: number): Promise<string> {
+    this.ensureReady();
+    const resolvedGuildId = this.resolveGuildId(guildId);
+    
+    const guild = this.client.guilds.cache.get(resolvedGuildId);
+    if (!guild) {
+      throw new Error("Discord server not found by guildId");
+    }
+
+    // Check bot permissions
+    const botMember = guild.members.cache.get(this.client.user!.id);
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      throw new Error("Bot doesn't have permission to manage channels");
+    }
+
+    try {
+      // Validate user limit (0-99, where 0 means unlimited)
+      let validUserLimit = userLimit;
+      if (userLimit !== undefined) {
+        if (userLimit < 0 || userLimit > 99) {
+          throw new Error("User limit must be between 0 and 99 (0 = unlimited)");
+        }
+        validUserLimit = userLimit;
+      }
+
+      // Validate bitrate (8000-384000 depending on server boost level)
+      let validBitrate = bitrate;
+      if (bitrate !== undefined) {
+        // Get server's maximum bitrate based on boost level
+        const maxBitrate = guild.maximumBitrate || 64000; // Default to 64kbps if not available
+        
+        if (bitrate < 8000 || bitrate > maxBitrate) {
+          throw new Error(`Bitrate must be between 8000 and ${maxBitrate} (server's maximum based on boost level)`);
+        }
+        validBitrate = bitrate;
+      }
+
+      let voiceChannel;
+      const channelOptions: any = {
+        name,
+        type: ChannelType.GuildVoice
+      };
+
+      // Add optional properties if provided
+      if (validUserLimit !== undefined) {
+        channelOptions.userLimit = validUserLimit;
+      }
+      if (validBitrate !== undefined) {
+        channelOptions.bitrate = validBitrate;
+      }
+
+      if (categoryId) {
+        const category = guild.channels.cache.get(categoryId) as CategoryChannel;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+          throw new Error("Category not found by categoryId");
+        }
+        channelOptions.parent = category;
+        
+        voiceChannel = await guild.channels.create(channelOptions);
+        
+        const details = [];
+        if (validUserLimit !== undefined) details.push(`user limit: ${validUserLimit === 0 ? 'unlimited' : validUserLimit}`);
+        if (validBitrate !== undefined) details.push(`bitrate: ${validBitrate}kbps`);
+        
+        return `Created new voice channel: ${voiceChannel.name} (ID: ${voiceChannel.id}) in category: ${category.name}${details.length > 0 ? ` with ${details.join(', ')}` : ''}`;
+      } else {
+        voiceChannel = await guild.channels.create(channelOptions);
+        
+        const details = [];
+        if (validUserLimit !== undefined) details.push(`user limit: ${validUserLimit === 0 ? 'unlimited' : validUserLimit}`);
+        if (validBitrate !== undefined) details.push(`bitrate: ${validBitrate}kbps`);
+        
+        return `Created new voice channel: ${voiceChannel.name} (ID: ${voiceChannel.id})${details.length > 0 ? ` with ${details.join(', ')}` : ''}`;
+      }
+    } catch (error) {
+      throw new Error(`Failed to create voice channel: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async deleteChannel(guildId: string | undefined, channelId: string): Promise<string> {
     this.ensureReady();
     const resolvedGuildId = this.resolveGuildId(guildId);

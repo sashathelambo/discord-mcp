@@ -387,6 +387,14 @@ export const CreateTextChannelSchema = z.object({
   categoryId: z.string().optional().describe("Category ID (optional)")
 });
 
+export const CreateVoiceChannelSchema = z.object({
+  guildId: z.string().optional().describe("Discord server ID"),
+  name: z.string().describe("Voice channel name"),
+  categoryId: z.string().optional().describe("Category ID (optional)"),
+  userLimit: z.number().min(0).max(99).optional().describe("User limit (0-99, 0 = unlimited)"),
+  bitrate: z.number().min(8000).max(384000).optional().describe("Bitrate in bps (8000-384000, depends on server boost level)")
+});
+
 export const DeleteChannelSchema = z.object({
   guildId: z.string().optional().describe("Discord server ID"),
   channelId: z.string().describe("Discord channel ID")

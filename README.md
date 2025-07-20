@@ -19,9 +19,9 @@
 
 ## 📖 Description
 
-A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), providing **82 powerful tools** for complete Discord server management and automation through MCP-compatible applications like Claude Desktop.
+A comprehensive [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), providing **83 powerful tools** for complete Discord server management and automation through MCP-compatible applications like Claude Desktop.
 
-**🚀 NEW MAJOR UPDATE:** We've expanded from 76 to **82 total tools**, adding 6 new powerful channel organization capabilities for complete server structure management!
+**🚀 NEW MAJOR UPDATE:** We've expanded from 76 to **83 total tools**, adding 6 powerful channel organization capabilities and voice channel creation for complete server structure management!
 
 Transform your AI assistants into Discord powerhouses with comprehensive server management, voice channel control, advanced moderation, detailed analytics, and rich interactive components.
 
@@ -146,7 +146,7 @@ Install Discord MCP Server automatically via [Smithery](https://smithery.ai/):
 npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 ```
 
-## 🛠️ Available Tools (82 Total)
+## 🛠️ Available Tools (83 Total)
 
 > **Note:** If `DISCORD_GUILD_ID` is set in your environment, the `guildId` parameter becomes optional for all tools that accept it.
 
@@ -202,8 +202,9 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 - **`get_roles`** - List all server roles
 - **`set_role_positions`** - Set role hierarchy positions
 
-### 📢 Channel Management (14 tools)
+### 📢 Channel Management (15 tools)
 - **`create_text_channel`** - Create a text channel
+- **`create_voice_channel`** - Create a voice channel with customizable settings
 - **`delete_channel`** - Delete a channel
 - **`find_channel`** - Find a channel by name
 - **`list_channels`** - List all channels
@@ -303,6 +304,19 @@ The Discord MCP server includes powerful channel organization capabilities for c
 {
   "name": "get_channel_structure",
   "arguments": { "guildId": "your-server-id" }
+}
+```
+
+**Create Voice Channel with Settings:**
+```json
+{
+  "name": "create_voice_channel",
+  "arguments": {
+    "name": "Gaming Voice",
+    "categoryId": "123456789",
+    "userLimit": 10,
+    "bitrate": 128000
+  }
 }
 ```
 

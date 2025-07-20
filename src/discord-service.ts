@@ -1126,38 +1126,76 @@ Boosts:
     try {
       const role = guild.roles.cache.get(roleId);
       if (!role) {
-        throw new Error("Role not found by roleId");
+        throw new Error(`Role not found: ${roleId}`);
       }
 
-      // Check role hierarchy
+      // Cannot edit @everyone role
+      if (role.id === guild.id) {
+        throw new Error("Cannot edit @everyone role");
+      }
+
+      // Check role hierarchy - bot cannot edit roles at or above its highest role
       const botHighestRole = botMember.roles.highest;
-      if (role.position >= botHighestRole.position) {
-        throw new Error("Cannot edit this role (insufficient permissions or role hierarchy)");
+      if (role.position >= botHighestRole.position && role.id !== botMember.roles.highest.id) {
+        throw new Error(`Cannot edit role "${role.name}" (position ${role.position}) - bot's highest role "${botHighestRole.name}" is at position ${botHighestRole.position}. Bot can only edit roles below its highest role.`);
       }
 
       const editOptions: any = {};
       const changes: string[] = [];
 
+      // Validate and set name
       if (name !== undefined) {
+        if (name.length === 0 || name.length > 100) {
+          throw new Error("Role name must be between 1 and 100 characters");
+        }
         editOptions.name = name;
         changes.push(`name to "${name}"`);
       }
 
+      // Validate and set color
       if (color !== undefined) {
-        editOptions.color = color as ColorResolvable;
-        changes.push(`color to ${color}`);
+        // Handle different color formats
+        let validColor = color;
+        if (color.toLowerCase() === 'default' || color.toLowerCase() === 'none') {
+          validColor = '#000000'; // Default color
+        } else if (color.startsWith('#')) {
+          // Validate hex color
+          if (!/^#[0-9A-F]{6}$/i.test(color)) {
+            throw new Error(`Invalid hex color format: ${color}. Use format #RRGGBB (e.g., #FF0000 for red)`);
+          }
+          validColor = color;
+        } else if (/^[0-9A-F]{6}$/i.test(color)) {
+          // Add # if missing
+          validColor = `#${color}`;
+        } else {
+          throw new Error(`Invalid color format: ${color}. Use hex format #RRGGBB or 'default'`);
+        }
+        
+        editOptions.color = validColor as ColorResolvable;
+        changes.push(`color to ${validColor}`);
       }
 
+      // Validate and set permissions
       if (permissions !== undefined && permissions.length > 0) {
         const permissionBits = [];
+        const invalidPermissions = [];
+        
         for (const perm of permissions) {
           if (perm in PermissionFlagsBits) {
             permissionBits.push(PermissionFlagsBits[perm as keyof typeof PermissionFlagsBits]);
+          } else {
+            invalidPermissions.push(perm);
           }
         }
+        
+        if (invalidPermissions.length > 0) {
+          const validPermissions = Object.keys(PermissionFlagsBits).slice(0, 10).join(', '); // Show first 10
+          throw new Error(`Invalid permissions: ${invalidPermissions.join(', ')}. Valid permissions include: ${validPermissions}... (use get_roles to see all permissions)`);
+        }
+        
         if (permissionBits.length > 0) {
           editOptions.permissions = permissionBits;
-          changes.push(`permissions`);
+          changes.push(`permissions (${permissions.length} permissions set)`);
         }
       }
 
@@ -1167,7 +1205,7 @@ Boosts:
 
       const updatedRole = await role.edit(editOptions);
       
-      return `Successfully edited role ${updatedRole.name} (ID: ${roleId}). Changed: ${changes.join(', ')}`;
+      return `Successfully edited role "${updatedRole.name}" (ID: ${roleId}). Changed: ${changes.join(', ')}`;
     } catch (error) {
       throw new Error(`Failed to edit role: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -1273,6 +1311,11 @@ Boosts:
     }
 
     try {
+      // Get the bot's highest role for permission context
+      const botMember = guild.members.cache.get(this.client.user!.id);
+      const botHighestRole = botMember?.roles.highest;
+      const hasManageRoles = botMember?.permissions.has(PermissionFlagsBits.ManageRoles);
+      
       const roles = guild.roles.cache.sort((a, b) => b.position - a.position);
       
       if (roles.size === 0) {
@@ -1281,16 +1324,34 @@ Boosts:
       
       const formattedRoles = roles.map((role: Role) => {
         const memberCount = role.members.size;
+        const isManageable = botHighestRole && role.position < botHighestRole.position && role.id !== guild.id;
+        const isEveryone = role.id === guild.id;
         const permissions = role.permissions.toArray().join(', ') || 'None';
-        return `- **${role.name}** (ID: ${role.id})
+        
+        return `- **${role.name}** (ID: \`${role.id}\`)
   - Color: ${role.hexColor}
   - Position: ${role.position}
   - Members: ${memberCount}
   - Mentionable: ${role.mentionable ? 'Yes' : 'No'}
-  - Hoisted: ${role.hoist ? 'Yes' : 'No'}`;
+  - Hoisted: ${role.hoist ? 'Yes' : 'No'}
+  - Special: ${isEveryone ? '@everyone role' : 'Regular role'}
+  - Bot can reposition: ${isManageable && hasManageRoles ? '✅ Yes' : '❌ No'}${!isManageable && !isEveryone ? ` (${role.position >= (botHighestRole?.position || 0) ? 'higher/equal position' : 'permission issue'})` : ''}`;
       });
       
-      return `**Retrieved ${formattedRoles.length} roles:**\n${formattedRoles.join('\n\n')}`;
+      return `📋 **Roles in ${guild.name}** (${formattedRoles.length} total)
+
+🤖 **Bot Status:**
+- Bot's highest role: **${botHighestRole?.name}** (Position: ${botHighestRole?.position})
+- Has "Manage Roles" permission: ${hasManageRoles ? '✅ Yes' : '❌ No'}
+
+📝 **Role Positioning Rules:**
+- Bot can only move roles **below** its highest role
+- @everyone role cannot be repositioned  
+- Positions are 0-based (0 = bottom, higher number = top)
+
+🎭 **Server Roles:**
+
+${formattedRoles.join('\n\n')}`;
     } catch (error) {
       throw new Error(`Failed to fetch roles: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -1322,22 +1383,36 @@ Boosts:
           throw new Error(`Role not found: ${roleId}`);
         }
 
-        // Check role hierarchy
-        if (role.position >= botHighestRole.position) {
-          throw new Error(`Cannot reposition role ${role.name} (insufficient permissions or role hierarchy)`);
+        // Skip @everyone role (it cannot be repositioned)
+        if (role.id === guild.id) {
+          throw new Error(`Cannot reposition @everyone role`);
+        }
+
+        // Check role hierarchy - bot cannot move roles at or above its highest role
+        if (role.position >= botHighestRole.position && role.id !== botMember.roles.highest.id) {
+          throw new Error(`Cannot reposition role "${role.name}" (position ${role.position}) - bot's highest role "${botHighestRole.name}" is at position ${botHighestRole.position}. Bot can only move roles below its highest role.`);
+        }
+
+        // Validate position is reasonable (Discord roles are 1-indexed, but we accept 0-based)
+        if (position < 0) {
+          throw new Error(`Invalid position ${position} for role ${role.name}. Position must be 0 or higher.`);
         }
 
         positionChanges.push({ role, position });
       }
 
-      // Apply position changes
+      if (positionChanges.length === 0) {
+        return "No roles to reposition";
+      }
+
+      // Apply position changes using the correct format for Discord.js
       await guild.roles.setPositions(positionChanges);
       
       const changedRoles = positionChanges.map(({ role, position }) => 
-        `${role.name} to position ${position}`
+        `${role.name} (${role.id}) to position ${position}`
       ).join(', ');
       
-      return `Successfully updated role positions: ${changedRoles}`;
+      return `Successfully updated ${positionChanges.length} role positions: ${changedRoles}`;
     } catch (error) {
       throw new Error(`Failed to set role positions: ${error instanceof Error ? error.message : String(error)}`);
     }

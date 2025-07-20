@@ -32,10 +32,8 @@ async function initializeDiscord() {
   await discordService.initialize();
 }
 
-// Tool definitions
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
+// Complete tools list for both stdio and HTTP
+const getAllTools = () => [
       // Server Information
       {
         name: 'get_server_info',
@@ -477,7 +475,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['webhookUrl', 'message'],
         },
       },
-    ],
+];
+
+// Tool definitions
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: getAllTools(),
   };
 });
 
@@ -710,44 +713,8 @@ async function main() {
                   res.end(JSON.stringify(response));
                   
                 } else if (message.method === 'tools/list') {
-                  // Return tools list with proper schemas
-                  const tools = [
-                    {
-                      name: 'get_server_info',
-                      description: 'Get detailed discord server information',
-                      inputSchema: {
-                        type: 'object',
-                        properties: {
-                          guildId: { type: 'string', description: 'Discord server ID' }
-                        },
-                        required: []
-                      }
-                    },
-                    {
-                      name: 'send_message',
-                      description: 'Send a message to a specific channel',
-                      inputSchema: {
-                        type: 'object',
-                        properties: {
-                          channelId: { type: 'string', description: 'Discord channel ID' },
-                          message: { type: 'string', description: 'Message content' }
-                        },
-                        required: ['channelId', 'message']
-                      }
-                    },
-                    {
-                      name: 'read_messages',
-                      description: 'Read recent message history from a specific channel',
-                      inputSchema: {
-                        type: 'object',
-                        properties: {
-                          channelId: { type: 'string', description: 'Discord channel ID' },
-                          count: { type: 'string', description: 'Number of messages to retrieve' }
-                        },
-                        required: ['channelId']
-                      }
-                    }
-                  ];
+                  // Return complete tools list
+                  const tools = getAllTools();
                   const response = {
                     jsonrpc: "2.0",
                     id: message.id,
@@ -763,18 +730,136 @@ async function main() {
                     let result;
                     
                     switch (name) {
-                      case 'get_server_info':
+                      // Server Information
+                      case 'get_server_info': {
                         const parsed = schemas.ServerInfoSchema.parse(args);
                         result = await discordService.getServerInfo(parsed.guildId);
                         break;
-                      case 'send_message':
-                        const msgParsed = schemas.SendMessageSchema.parse(args);
-                        result = await discordService.sendMessage(msgParsed.channelId, msgParsed.message);
+                      }
+
+                      // Message Management
+                      case 'send_message': {
+                        const parsed = schemas.SendMessageSchema.parse(args);
+                        result = await discordService.sendMessage(parsed.channelId, parsed.message);
                         break;
-                      case 'read_messages':
-                        const readParsed = schemas.ReadMessagesSchema.parse(args);
-                        result = await discordService.readMessages(readParsed.channelId, readParsed.count);
+                      }
+                      case 'edit_message': {
+                        const parsed = schemas.EditMessageSchema.parse(args);
+                        result = await discordService.editMessage(parsed.channelId, parsed.messageId, parsed.newMessage);
                         break;
+                      }
+                      case 'delete_message': {
+                        const parsed = schemas.DeleteMessageSchema.parse(args);
+                        result = await discordService.deleteMessage(parsed.channelId, parsed.messageId);
+                        break;
+                      }
+                      case 'read_messages': {
+                        const parsed = schemas.ReadMessagesSchema.parse(args);
+                        result = await discordService.readMessages(parsed.channelId, parsed.count);
+                        break;
+                      }
+                      case 'get_user_id_by_name': {
+                        const parsed = schemas.GetUserIdByNameSchema.parse(args);
+                        result = await discordService.getUserIdByName(parsed.username, parsed.guildId);
+                        break;
+                      }
+                      case 'send_private_message': {
+                        const parsed = schemas.SendPrivateMessageSchema.parse(args);
+                        result = await discordService.sendPrivateMessage(parsed.userId, parsed.message);
+                        break;
+                      }
+                      case 'edit_private_message': {
+                        const parsed = schemas.EditPrivateMessageSchema.parse(args);
+                        result = await discordService.editPrivateMessage(parsed.userId, parsed.messageId, parsed.newMessage);
+                        break;
+                      }
+                      case 'delete_private_message': {
+                        const parsed = schemas.DeletePrivateMessageSchema.parse(args);
+                        result = await discordService.deletePrivateMessage(parsed.userId, parsed.messageId);
+                        break;
+                      }
+                      case 'read_private_messages': {
+                        const parsed = schemas.ReadPrivateMessagesSchema.parse(args);
+                        result = await discordService.readPrivateMessages(parsed.userId, parsed.count);
+                        break;
+                      }
+                      case 'add_reaction': {
+                        const parsed = schemas.AddReactionSchema.parse(args);
+                        result = await discordService.addReaction(parsed.channelId, parsed.messageId, parsed.emoji);
+                        break;
+                      }
+                      case 'remove_reaction': {
+                        const parsed = schemas.RemoveReactionSchema.parse(args);
+                        result = await discordService.removeReaction(parsed.channelId, parsed.messageId, parsed.emoji);
+                        break;
+                      }
+
+                      // Channel Management
+                      case 'create_text_channel': {
+                        const parsed = schemas.CreateTextChannelSchema.parse(args);
+                        result = await discordService.createTextChannel(parsed.guildId, parsed.name, parsed.categoryId);
+                        break;
+                      }
+                      case 'delete_channel': {
+                        const parsed = schemas.DeleteChannelSchema.parse(args);
+                        result = await discordService.deleteChannel(parsed.guildId, parsed.channelId);
+                        break;
+                      }
+                      case 'find_channel': {
+                        const parsed = schemas.FindChannelSchema.parse(args);
+                        result = await discordService.findChannel(parsed.guildId, parsed.channelName);
+                        break;
+                      }
+                      case 'list_channels': {
+                        const parsed = schemas.ListChannelsSchema.parse(args);
+                        result = await discordService.listChannels(parsed.guildId);
+                        break;
+                      }
+
+                      // Category Management
+                      case 'create_category': {
+                        const parsed = schemas.CreateCategorySchema.parse(args);
+                        result = await discordService.createCategory(parsed.guildId, parsed.name);
+                        break;
+                      }
+                      case 'delete_category': {
+                        const parsed = schemas.DeleteCategorySchema.parse(args);
+                        result = await discordService.deleteCategory(parsed.guildId, parsed.categoryId);
+                        break;
+                      }
+                      case 'find_category': {
+                        const parsed = schemas.FindCategorySchema.parse(args);
+                        result = await discordService.findCategory(parsed.guildId, parsed.categoryName);
+                        break;
+                      }
+                      case 'list_channels_in_category': {
+                        const parsed = schemas.ListChannelsInCategorySchema.parse(args);
+                        result = await discordService.listChannelsInCategory(parsed.guildId, parsed.categoryId);
+                        break;
+                      }
+
+                      // Webhook Management
+                      case 'create_webhook': {
+                        const parsed = schemas.CreateWebhookSchema.parse(args);
+                        result = await discordService.createWebhook(parsed.channelId, parsed.name);
+                        break;
+                      }
+                      case 'delete_webhook': {
+                        const parsed = schemas.DeleteWebhookSchema.parse(args);
+                        result = await discordService.deleteWebhook(parsed.webhookId);
+                        break;
+                      }
+                      case 'list_webhooks': {
+                        const parsed = schemas.ListWebhooksSchema.parse(args);
+                        result = await discordService.listWebhooks(parsed.channelId);
+                        break;
+                      }
+                      case 'send_webhook_message': {
+                        const parsed = schemas.SendWebhookMessageSchema.parse(args);
+                        result = await discordService.sendWebhookMessage(parsed.webhookUrl, parsed.message);
+                        break;
+                      }
+
                       default:
                         throw new Error(`Unknown tool: ${name}`);
                     }

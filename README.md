@@ -28,25 +28,63 @@ Enable your AI assistants to seamlessly interact with Discord. Manage channels, 
 
 ## 🔬 Installation
 
-#### Clone the repository
+### Prerequisites
+- Node.js 18+ (download from [nodejs.org](https://nodejs.org/))
+- A Discord Bot token (see [Discord Bot Setup](#discord-bot-setup) below)
+
+### Setup Steps
+
+#### 1. Clone the repository
 ```bash
 git clone https://github.com/SaseQ/discord-mcp
+cd discord-mcp
 ```
 
-#### Install dependencies and build
-> NOTE: Node.js 18+ is required. You can download it from [nodejs.org](https://nodejs.org/).
+#### 2. Install dependencies
 ```bash
-cd discord-mcp
 npm install
+```
+
+#### 3. Configure environment variables
+Create a `.env` file in the project root:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your Discord bot token:
+```env
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_GUILD_ID=optional_default_server_id
+```
+
+#### 4. Build the project
+```bash
 npm run build
 ```
 
-#### Configure AI client
-Many code editors and other AI clients use a configuration file to manage MCP servers.
+#### 5. Test the setup (optional)
+```bash
+npm run dev
+```
+You should see: `Discord bot logged in as YourBotName#0000`
 
-The Discord MPC server can be configured by adding the following to your configuration file.
+### Discord Bot Setup
 
-> NOTE: You will need to create a Discord Bot token to use this server. Instructions on how to create a Discord Bot token can be found [here](https://discordjs.guide/preparations/setting-up-a-bot-application.html#creating-your-bot).
+To use this server, you need a Discord Bot token:
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click "New Application" and give it a name
+3. Go to the "Bot" section in the left sidebar
+4. Click "Reset Token" and copy the token
+5. Add this token to your `.env` file or MCP configuration
+6. Under "Privileged Gateway Intents", enable:
+   - **Server Members Intent** (required for user lookups)
+   - **Message Content Intent** (required for reading messages)
+7. Invite the bot to your server using the OAuth2 URL generator with appropriate permissions
+
+### Configure AI Client
+
+Add the Discord MCP server to your AI client configuration:
 ```json
 {
   "mcpServers": {
@@ -63,7 +101,9 @@ The Discord MPC server can be configured by adding the following to your configu
   }
 }
 ```
-The `DISCORD_GUILD_ID` environment variable is optional. When provided, it sets a default Discord server ID so any tool that accepts a `guildId` parameter can omit it.
+**Environment Variables:**
+- `DISCORD_TOKEN` (required): Your Discord bot token
+- `DISCORD_GUILD_ID` (optional): Default Discord server ID. When set, tools that accept a `guildId` parameter can omit it
 
 
 ## 🔧 GitMCP
@@ -100,7 +140,7 @@ npx -y @smithery/cli@latest install @SaseQ/discord-mcp --client claude
 
 ## 🛠️ Available Tools
 
-If `DISCORD_GUILD_ID` is set, the `guildId` parameter becomes optional for all tools below.
+> **Note:** If `DISCORD_GUILD_ID` is set in your environment, the `guildId` parameter becomes optional for all tools that accept it.
 
 #### Server Information
  - [`get_server_info`](): Get detailed discord server information
@@ -137,6 +177,47 @@ If `DISCORD_GUILD_ID` is set, the `guildId` parameter becomes optional for all t
  - [`send_webhook_message`](): Send a message via webhook
 
 
+## 🚀 Development
+
+### Available Scripts
+
+```bash
+# Run in development mode with hot reload
+npm run dev
+
+# Build the TypeScript project
+npm run build
+
+# Clean build artifacts
+npm run clean
+
+# Type check without building
+npm run type-check
+```
+
+### Project Structure
+
+```
+discord-mcp/
+├── src/
+│   ├── index.ts          # Main server entry point
+│   ├── discord-service.ts # Discord.js integration
+│   └── types.ts          # TypeScript type definitions
+├── dist/                 # Compiled JavaScript (after build)
+├── .env                  # Environment variables (create from .env.example)
+├── .env.example          # Example environment configuration
+├── package.json          # Project dependencies and scripts
+└── tsconfig.json         # TypeScript configuration
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 <hr>
 
-A more detailed examples can be found in the [Wiki](https://github.com/SaseQ/discord-mcp/wiki).
+For more detailed examples and advanced usage, check out the [Wiki](https://github.com/SaseQ/discord-mcp/wiki).

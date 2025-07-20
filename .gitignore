@@ -1,7 +1,10 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Node.js
+node_modules/
+dist/
+*.log
+.env
+.env.local
+.env.*.local
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
@@ -26,7 +29,6 @@ target/
 /nbbuild/
 /dist/
 /nbdist/
-/.nb-gradle/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/

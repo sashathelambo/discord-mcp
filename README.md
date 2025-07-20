@@ -20,7 +20,7 @@
 
 ## 📖 Description
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for the Discord API [(JDA)](https://jda.wiki/), 
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server for Discord built with [discord.js](https://discord.js.org/), 
 allowing seamless integration of Discord Bot with MCP-compatible applications like Claude Desktop.
 
 Enable your AI assistants to seamlessly interact with Discord. Manage channels, send messages, and retrieve server information effortlessly. Enhance your Discord experience with powerful automation capabilities.
@@ -33,11 +33,12 @@ Enable your AI assistants to seamlessly interact with Discord. Manage channels, 
 git clone https://github.com/SaseQ/discord-mcp
 ```
 
-#### Build the project
-> NOTE: Maven installation is required to use the mvn command. Full instructions can be found [here](https://www.baeldung.com/install-maven-on-windows-linux-mac).
+#### Install dependencies and build
+> NOTE: Node.js 18+ is required. You can download it from [nodejs.org](https://nodejs.org/).
 ```bash
 cd discord-mcp
-mvn clean package # The jar file will be available in the /target directory
+npm install
+npm run build
 ```
 
 #### Configure AI client
@@ -50,10 +51,9 @@ The Discord MPC server can be configured by adding the following to your configu
 {
   "mcpServers": {
     "discord-mcp": {
-      "command": "java",
+      "command": "node",
       "args": [
-        "-jar",
-        "/absolute/path/to/discord-mcp-0.0.1-SNAPSHOT.jar"
+        "/absolute/path/to/discord-mcp/dist/index.js"
       ],
       "env": {
         "DISCORD_TOKEN": "YOUR_DISCORD_BOT_TOKEN",

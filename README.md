@@ -4,6 +4,10 @@
 
 A comprehensive Model Context Protocol (MCP) server for Discord API integration, providing powerful Discord bot management capabilities through a standardized interface.
 
+<a href="https://glama.ai/mcp/servers/@sashathelambo/discord-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@sashathelambo/discord-mcp/badge" alt="Discord Server MCP server" />
+</a>
+
 ## 🔒 Security First
 
 **BEFORE YOU START:**

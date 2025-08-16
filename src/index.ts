@@ -3763,12 +3763,18 @@ async function main() {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(response));
                   } catch (error) {
+                    // Log the error and stack trace on the server
+                    if (error instanceof Error) {
+                      console.error("Error in tools/call:", error.stack || error.message);
+                    } else {
+                      console.error("Error in tools/call:", error);
+                    }
                     const response = {
                       jsonrpc: "2.0",
                       id: message.id,
                       error: {
                         code: -32000,
-                        message: error instanceof Error ? error.message : String(error)
+                        message: "An internal error occurred"
                       }
                     };
                     res.writeHead(200, { 'Content-Type': 'application/json' });

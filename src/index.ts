@@ -3835,8 +3835,14 @@ async function main() {
                   res.end(JSON.stringify({ error: 'Session not found' }));
                 }
               } catch (error) {
+                // Log the error and stack trace on the server for debugging
+                if (error instanceof Error) {
+                  console.error('Error handling /message POST:', error.stack);
+                } else {
+                  console.error('Error handling /message POST:', error);
+                }
                 res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+                res.end(JSON.stringify({ error: 'Invalid request' }));
               }
             });
             
